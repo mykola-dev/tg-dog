@@ -26,6 +26,30 @@ def test_digest_llm_router_returns_digest(stateless_api_client):
     assert payload["provider_id"] == "opencode_cli"
 
 
+def test_digest_llm_router_includes_title_in_digest_and_chunks(stateless_api_client):
+    with patch("api.routers.digest_llm.run_digest_command") as mock_runner:
+        mock_runner.return_value.success = True
+        mock_runner.return_value.output_text = "- Item with [link](https://example.com)"
+        mock_runner.return_value.provider_id = "opencode_cli"
+        mock_runner.return_value.details = {"ok": True}
+
+        resp = stateless_api_client.post(
+            "/digest/messages",
+            json={
+                "formatted_text": "## Example\n\nHello",
+                "command_template": 'opencode run -m opencode/minimax-m2.5-free "{prompt}"',
+                "system_prompt": "Create digest",
+                "output_format": "markdown_v2",
+                "title_text": "📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня",
+            },
+        )
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["digest_text"].startswith("*📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня*")
+    assert payload["delivery_chunks"] == [payload["digest_text"]]
+
+
 def test_digest_llm_router_returns_503_on_provider_failure(stateless_api_client):
     with patch("api.routers.digest_llm.run_digest_command") as mock_runner:
         mock_runner.return_value.success = False

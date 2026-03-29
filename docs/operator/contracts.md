@@ -1,52 +1,135 @@
 # Operator Contract Map
 
-## Common Envelope
+## Canonical Telegram Message Item
 
-All adapters return `services/shared/contracts/common.py::AdapterEnvelope`.
+The main content-processing path uses one canonical message shape.
 
-Required fields:
+Primary sources:
+- `api/schemas.py`
+- `services/shared/contracts/message.py`
 
-- `contract_version`
-- `node_name`
-- `run_id`
-- `status`
-- `payload_inline` or `payload_ref`
-- `warnings`
-- `metrics`
-- `error` when `status=error`
+Core fields:
+- `schema_version`
+- `source_kind`
+- `source_id`
+- `source_title`
+- `message_id`
+- `message_timestamp`
+- `author_id`
+- `author_title`
+- `text`
+- `reply_to_message_id`
+- `forwarded_from_source_id`
+- `is_outbound`
+- `is_from_self`
+- `is_service_message`
+- `media_items`
+- `ingestion_meta`
 
-## Core Contracts
+Invariants:
+- one item = one Telegram message
+- media stays attached to that same message item
+- OCR enrichment stays on that same item
+- downstream nodes should not need a join step to reconnect OCR output
 
-- `services/shared/contracts/auth.py`: auth requests/responses and account states.
-- `services/shared/contracts/run.py`: canonical run manifest.
-- `services/shared/contracts/message.py`: canonical message schema.
-- `services/shared/contracts/ocr.py`: OCR output records.
-- `services/shared/contracts/heuristic.py`: heuristic decision output.
-- `services/shared/contracts/classification.py`: classification output and provider attempts.
-- `services/shared/contracts/digest.py`: digest sections and delivery chunks.
-- `services/shared/contracts/delivery.py`: delivery receipt output.
+## Media Item Rules
 
-## n8n node contract direction
+Current media item fields:
+- `media_kind`
+- `file_ref`
+- `mime_type`
+- `size_bytes`
+- `ocr_status`
+- `ocr_text`
+- `ocr_confidence_hint`
+- `ocr_error_code`
+- `ocr_error_message`
 
-- `n8n` custom nodes should exchange canonical message-shaped items whenever they operate on Telegram content.
-- Upstream nodes may differ in transport, but downstream OCR/filter/digest logic should depend on the canonical message schema instead of raw Telegram Bot API payloads.
-- Core rework path is `Telethon`-first; built-in Telegram bot nodes are optional adapters, not the canonical source contract.
+Current runtime truth:
+- image media is the OCR input path
+- supported GIF-style media can flow through random read and repost paths
+- non-image OCR is not implemented
 
-## Artifact Reference Rules
+## Cleanup Contract
 
-- Large payloads are stored as files in `run_artifacts` and passed by path.
-- `manifest.json` keeps `previous_outputs` map from `node_name` to artifact path.
-- Nodes append their own artifact refs and must not mutate previous artifacts.
+`POST /messages/cleanup` returns:
+- `mode`
+- `output_format`
+- `message_count`
+- `combined_text`
+- `formatted_messages`
 
-## OCR Provider Notes
+This is the formatting boundary between canonical Telegram items and text-oriented downstream steps.
 
-- V1 default OCR provider is `local:tesseract`.
-- Local OCR baseline expects `eng`, `ukr`, and `rus` language packs.
+## AI Text Contract
 
-## Classification and Heuristic Notes
+`POST /digest/messages` accepts:
+- `formatted_text`
+- `command_template`
+- `system_prompt`
+- `output_format`
+- `title_text` (optional)
 
-- Heuristic output is produced by `heuristic-filter` and can drop (`blacklist`) or route (`whitelist`) items.
-- Classification uses ordered provider queue with first-success semantics.
-- Preset provider profiles include `opencode_cli`.
-- Digest sections are always rendered in order: `main`, `filtered`, `unclassified`.
-- API/n8n digest output now carries canonical delivery-ready bot payload fields: `digest_text`, `parse_mode = markdown_v2`, and ordered `delivery_chunks` that must not be re-split downstream.
+`POST /digest/messages` returns:
+- `digest_text`
+- `format`
+- `parse_mode`
+- `delivery_chunks`
+- `provider_id`
+- `provider_attempts`
+- `message_count`
+- `source_count`
+- `raw_output`
+
+Despite the node name `TG Dog Digest`, this is the current general worker-backed AI text-processing response shape.
+
+Important behavior:
+- output can be plain text or `markdown_v2`
+- delivery shaping happens here
+- when `title_text` is set, the digest title is prepended in bold for `markdown_v2`
+- multi-part digests add `(частина N/total)` to each chunk title automatically
+- `delivery_chunks` are already split for downstream Telegram delivery
+
+## Trigger Contracts
+
+### User-message trigger
+
+`TG Dog Message Trigger` delivers canonical Telegram message items to `n8n`.
+
+### Bot-command trigger
+
+`TG Dog Bot Command Trigger` uses a different trigger payload shape.
+
+Key fields:
+- `schema_version`
+- `trigger_kind`
+- `workflow_id`
+- `node_id`
+- `command`
+- `command_text`
+- `chat_id`
+- `chat_type`
+- `message_id`
+- `message_timestamp`
+- `user_id`
+- `username`
+- `first_name`
+- `last_name`
+- `raw_update`
+
+Do not distort canonical Telegram message items to look like bot-command payloads, and do not distort bot-command payloads to look canonical unless you are explicitly adding a normalizer step.
+
+## Large Payload Rules
+
+- Large runtime payloads should move by file reference, not giant inline blobs.
+- Artifact helpers under `services/shared/runtime/` are the operational truth.
+- Preserve previous output refs for downstream steps instead of mutating old artifacts in place.
+
+## Legacy Contracts Still In Repo
+
+The repo still contains contract files for heuristic/classification and older CLI-oriented flows.
+
+Current stance:
+- they are real code paths in `services/`
+- they are not the main current `n8n` product path
+- do not present them as the default UX without fresh verification

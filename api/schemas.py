@@ -180,6 +180,7 @@ class DigestRequest(BaseModel):
         )
     )
     output_format: str = Field(default="markdown_v2")
+    title_text: str = Field(default="", max_length=500)
 
 
 class ProviderAttemptSchema(BaseModel):

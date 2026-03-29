@@ -14,6 +14,12 @@ This guide covers the current user-owned `n8n` workflow path.
 - `TG Dog Digest`
 - `TG Dog Post Message`
 
+Notes:
+
+- `TG Dog Digest` is the current worker-backed AI text step. The node name still says digest, but the same path also fits rewrites, extraction, summaries, and other text tasks.
+- `TG Dog Message Trigger` is the Telethon user-account realtime path.
+- `TG Dog Bot Command Trigger` is a separate Bot API ingress path.
+
 ## Build a workflow
 
 - Before using `TG Dog Digest`, log in once inside the OpenCode worker:
@@ -45,7 +51,7 @@ docker compose exec -it opencode-worker opencode providers login
 - `TG Dog Message Trigger` keeps using `N8N_INTERNAL_WEBHOOK_BASE_URL`, so user-account realtime flows do not depend on the public bot webhook tunnel.
 - Add `TG Dog OCR` after the reader when you want OCR enrichment.
 - Add `TG Dog Messages Cleanup` after OCR.
-- Add `TG Dog Digest` if you want an LLM digest.
+- Add `TG Dog Digest` if you want a worker-backed AI text step.
 - Add `TG Dog Post Message` if you want to send the cleaned text or digest to Telegram.
 
 ## Delivery notes

@@ -27,6 +27,7 @@ const DEFAULT_SYSTEM_PROMPT = [
     "- Never use **bold** or __italic__ syntax.",
     "- Close every formatting marker correctly.",
 ].join("\n");
+const DEFAULT_TITLE_TEMPLATE = '📰 ДАЙДЖЕСТ НОВИН ЗА {{$now.setLocale("uk").toFormat("d MMMM")}}';
 
 async function createDigest(payload) {
     const response = await fetch(`${API_BASE_URL}/digest/messages`, {
@@ -87,6 +88,26 @@ class TelegramDigest {
                         { name: "Plain Text", value: "plain_text" },
                     ],
                 },
+                {
+                    displayName: "Include Title",
+                    name: "includeTitle",
+                    type: "boolean",
+                    default: true,
+                    noDataExpression: true,
+                },
+                {
+                    displayName: "Title Template",
+                    name: "titleTemplate",
+                    type: "string",
+                    default: DEFAULT_TITLE_TEMPLATE,
+                    description: "Supports n8n expressions like {{$now.setLocale(\"uk\").toFormat(\"d MMMM\")}}",
+                    typeOptions: { rows: 2 },
+                    displayOptions: {
+                        show: {
+                            includeTitle: [true],
+                        },
+                    },
+                },
             ],
         };
     }
@@ -96,6 +117,8 @@ class TelegramDigest {
         const commandTemplate = String(this.getNodeParameter("commandTemplate", 0));
         const systemPrompt = String(this.getNodeParameter("systemPrompt", 0));
         const outputFormat = String(this.getNodeParameter("outputFormat", 0));
+        const includeTitle = Boolean(this.getNodeParameter("includeTitle", 0));
+        const titleTemplate = includeTitle ? String(this.getNodeParameter("titleTemplate", 0) || "") : "";
 
         const formattedText = items
             .map((item) => String((((item && item.json) || {}).formatted_text || ((item && item.json) || {}).combined_text || "")))
@@ -107,6 +130,7 @@ class TelegramDigest {
             command_template: commandTemplate,
             system_prompt: systemPrompt,
             output_format: outputFormat,
+            title_text: titleTemplate,
         });
         return [[{ json: digest }]];
     }

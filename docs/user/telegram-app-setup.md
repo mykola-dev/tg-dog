@@ -4,7 +4,7 @@
 
 TG-Dog logs in through Telegram's client API, so you need your own `api_id` and `api_hash` from `https://my.telegram.org/apps`.
 
-You are not publishing a public mobile app here. You are creating credentials for this self-hosted Telegram digest client to read your selected chats and send digests back to your account.
+You are not publishing a public mobile app here. You are creating credentials for this self-hosted Telegram automation stack so it can read selected chats and act through your workflows.
 
 ## Before you start
 
@@ -36,7 +36,7 @@ Use plain, boring values first. Fancy names and punctuation cause a lot of avoid
 - **Platform:** start with `Desktop`.
   - This is a practical recommendation for a local self-hosted client, not a Telegram requirement.
 - **Description:** paste a plain English sentence.
-  - Suggested text: `Local self-hosted Telegram digest client for reading selected chats and sending summaries back to my account.`
+  - Suggested text: `Local self-hosted Telegram workflow tool for reading selected chats and processing them in my own automations.`
 
 ## Observed Telegram portal behavior (2026-03-22)
 

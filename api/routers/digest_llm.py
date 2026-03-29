@@ -26,7 +26,11 @@ def digest_messages(payload: DigestRequest):
         )
 
     try:
-        prepared = prepare_digest_delivery(raw_text=response.output_text or "", output_format=output_format)
+        prepared = prepare_digest_delivery(
+            raw_text=response.output_text or "",
+            output_format=output_format,
+            title_text=payload.title_text,
+        )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"error": str(exc), "code": "DIGEST_OUTPUT_FORMAT_UNSUPPORTED"})
 

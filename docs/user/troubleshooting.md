@@ -19,18 +19,23 @@
 
 - Local OCR failures are recorded per item in `ocr.json`.
 - Pipeline continues when OCR item fails.
+- Only the local `tesseract` path is implemented in the current runtime.
 
-## Filtering/classification issues
+## AI worker issues
 
-- If message disappears unexpectedly, check blacklist rules.
-- If whitelist routing missing, verify `target_ref` on whitelist rules.
-- If classification providers fail, messages should appear in `Unclassified`.
 - `PROVIDER_AUTH_REQUIRED`: run worker login bootstrap again (`opencode providers login`).
 - OpenCode worker login command: `docker compose exec -it opencode-worker opencode providers login`
+- `Digest provider command failed`: the backend could not get a valid result from the worker command
 - `BOT_TOKEN_NOT_CONFIGURED`: set `TELEGRAM_BOT_TOKEN` in `.env`, then restart `api` and `app`.
 - `BOT_DELIVERY_FAILED`: Telegram Bot API rejected the target. Common causes are missing bot membership or missing admin/post rights in the selected chat or channel.
 - Worker down: `docker compose up -d opencode-worker`.
-- Docker socket errors from app: check `/var/run/docker.sock` mount exists for `app` in `docker-compose.yml`.
+- Docker socket errors from worker execution: check `/var/run/docker.sock` mounts for `api` and `app` in `docker-compose.yml`.
+
+## Legacy filtering/classification code
+
+- The repo still contains heuristic/classification code under `services/`.
+- That path is not the main current `n8n` UX.
+- If you are debugging that older path specifically, verify it directly in code/tests instead of assuming the user docs describe it fully.
 
 ## Delivery issues
 

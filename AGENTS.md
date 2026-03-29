@@ -1,130 +1,339 @@
 # AGENTS.md
 Rules for coding agents in TG-Dog.
-Goal: follow current runtime reality, not stale plans.
+
+Goal: follow current runtime reality, not stale plans or half-dead docs.
 
 ## Priority
-Use sources in this order: 1) direct user request, 2) system/developer instructions, 3) this file, 4) current runtime code in `api/`, `services/`, `n8n/custom-nodes/`, `docker/`, 5) current tests, 6) current docs in `docs/operator/`, `docs/user/`.
+Use sources in this order:
+1. direct user request
+2. system/developer instructions
+3. this file
+4. current runtime code in `docker-compose.yml`, `api/`, `services/`, `n8n/custom-nodes/`, `docker/`
+5. current tests
+6. current docs in `README.md`, `docs/operator/`, `docs/user/`
 
 If code and docs disagree, trust code plus active tests.
 
 ## What This Repo Is
-TG-Dog is a Dockerized Telegram digest system. `n8n` is the user-facing workflow editor/runtime. User-created `n8n` workflows are the persistent unit of behavior. Telegram onboarding/fetch/post use real `Telethon`. OCR uses real local `tesseract`. Digest/scoring providers run real CLI commands in worker containers.
+TG-Dog is a self-hosted Telegram automation platform built around `n8n`.
+
+Current product truth:
+- `n8n` is the user-facing workflow editor, scheduler, and long-lived runtime.
+- User-created `n8n` workflows are the persistent unit of behavior.
+- Telegram user-account auth, dialog listing, message reads, realtime user-message triggers, and user-mode delivery use real `Telethon`.
+- Bot-command ingress and bot-mode delivery use the real Telegram Bot API when `TELEGRAM_BOT_TOKEN` is configured.
+- OCR is real only through local `tesseract`.
+- The current AI text step is worker-backed through `api -> /digest/messages -> opencode-worker`.
+- The node is still named `TG Dog Digest`, but in practice it is the current general AI text-processing step, not just a digest-only feature.
+- Legacy heuristic/classification code still exists in `services/`, but it is not the main current `n8n` UX and should not be treated as the primary product path unless explicitly revived and verified.
 
 ## Required Reality Check
-For tasks touching core integrations, publish a short matrix: `component -> real | legacy | placeholder | test-only -> why`. Use it for Telegram auth/fetch/post, OCR, digest, scoring, scheduling when relevant. Stop and ask if your change would make any default runtime path simulated or placeholder.
+For tasks touching core integrations, publish a short matrix:
+`component -> real | legacy | placeholder | test-only -> why`
+
+Use it when relevant for:
+- Telegram auth / fetch / post
+- Telegram user-message trigger
+- Telegram bot-command ingress
+- OCR
+- AI worker / digest path
+- classification / heuristic paths
+- retention / cleanup
+
+Stop and ask if your change would make any default runtime path simulated, fake, or placeholder.
 
 ## Non-Negotiables
-Keep real integrations by default; no silent simulation fallback; no repo-managed workflow import/reconcile on startup; no user-facing design that requires code editing inside `n8n`; preserve user-owned workflow persistence; preserve canonical message contracts; preserve thin `n8n -> api` bridge design; do not claim completion without fresh evidence.
+- Keep real integrations by default.
+- No silent simulation fallback in production paths.
+- No repo-managed workflow import/reconcile on startup.
+- No user-facing design that requires code edits inside `n8n`.
+- Preserve user-owned workflow persistence.
+- Preserve canonical message contracts.
+- Preserve the thin `n8n -> api` bridge design.
+- Do not claim completion without fresh evidence.
 
 ## First Files To Read
-Start with `docs/operator/rework-architecture.md`, `docs/operator/architecture.md`, `docs/operator/contracts.md`, `docs/operator/runbooks.md`, `docs/user/quickstart.md`, `docker-compose.yml`, `api/main.py`, `api/routers/`, `api/telegram_trigger_runtime.py`, `services/shared/config.py`, `services/shared/telegram/client.py`, `services/shared/providers/`, `n8n/custom-nodes/`.
+Start with:
+- `README.md`
+- `docs/user/quickstart.md`
+- `docs/operator/architecture.md`
+- `docs/operator/contracts.md`
+- `docs/operator/runbooks.md`
+- `docker-compose.yml`
+- `api/main.py`
+- `api/routers/`
+- `api/telegram_trigger_runtime.py`
+- `api/telegram_bot_command_runtime.py`
+- `services/shared/config.py`
+- `services/shared/telegram/client.py`
+- `services/shared/providers/`
+- `n8n/custom-nodes/`
 
 ## Runtime Topology
-Main containers: `postgres`, `app`, `api`, `n8n`, `opencode-worker`.
+Compose project name: `tg-dog`.
+
+Main containers:
+- `postgres`
+- `app`
+- `api`
+- `n8n`
+- `opencode-worker`
 
 Meaning that matters:
-- `api`: FastAPI bridge for custom nodes; starts migrations plus Telegram trigger runtimes.
-- `n8n`: workflow editor/runtime; stores workflows/executions in `n8n_data`; loads local custom nodes; bootstraps owner account only.
-- `app`: onboarding/shared helper; starts onboarding then sleeps.
-- workers: provider CLIs called with `docker exec`; auth/state stays isolated.
+- `api`: FastAPI bridge for custom nodes; runs DB migrations on startup; loads and starts Telegram trigger runtime; loads and refreshes Telegram bot-command runtime.
+- `n8n`: workflow editor/runtime; stores workflows and executions; bootstraps only the owner account; loads local custom nodes from `./n8n/custom-nodes`.
+- `app`: onboarding and shared helper runtime; starts onboarding and then idles.
+- `opencode-worker`: isolated OpenCode CLI worker with persisted auth/state.
+- `app` and `api` both mount `/var/run/docker.sock`; worker execution is done from there with `docker exec`.
 
-Persistent volumes that matter: `telegram_sessions` for Telethon auth/session state, `run_artifacts` for manifests and node outputs, `n8n_data` for workflow definitions/executions/owner state.
+Persistent Docker volumes that matter:
+- `tg-dog_postgres_data`
+- `tg-dog_n8n_data`
+- `tg-dog_telegram_sessions`
+- `tg-dog_run_artifacts`
+- `tg-dog_opencode_state`
 
 ## Workflow Ownership
-User-created workflows in `n8n` are the source of truth. Do not reintroduce repo-managed workflow imports, do not overwrite user workflows from bootstrap scripts, do not assume repo workflow files are live runtime truth, and prefer user-facing composition in `n8n` over hardcoded orchestration. `docker/n8n/workflows/` is historical unless a task explicitly revives it.
+User-created workflows in `n8n` are the source of truth.
+
+Do not reintroduce:
+- repo-managed workflow imports on startup
+- bootstrap scripts that overwrite user workflows
+- assumptions that files in `docker/n8n/workflows/` are live runtime truth
+
+Prefer user-facing composition in `n8n` over hardcoded orchestration.
 
 ## n8n Rules
-Prefer standard `n8n` nodes first. Use thin custom nodes only for Telegram user-account behavior or repo-specific bridging. Keep config in node parameters. Keep bridge `n8n -> api` over internal HTTP. Do not give `n8n` Docker socket access. Do not embed Telethon logic directly in custom nodes.
+Prefer standard `n8n` nodes first. Use custom nodes only where Telegram user-account behavior or repo-specific bridge logic is actually needed.
 
-Current custom nodes: `TG Dog Source Selector`, `TG Dog Message Reader`, `TG Dog Message Trigger`, `TG Dog Random Message`, `TG Dog OCR`, `TG Dog Messages Cleanup`, `TG Dog Digest`, `TG Dog Post Message`.
+Current custom nodes:
+- `TG Dog Source Selector`
+- `TG Dog Message Reader`
+- `TG Dog Message Trigger`
+- `TG Dog Bot Command Trigger`
+- `TG Dog Random Message`
+- `TG Dog OCR`
+- `TG Dog Messages Cleanup`
+- `TG Dog Digest`
+- `TG Dog Post Message`
 
 Do not casually rename node types, parameter names, or response shapes.
 
-Important env vars: `TELEGRAM_SOURCE_SELECTOR_API_URL`, `N8N_INTERNAL_WEBHOOK_BASE_URL`, `WEBHOOK_URL`.
-Important bridge endpoints: `GET /dialogs`, `GET /dialogs/send-targets`, `POST /messages/read`, `POST /messages/random`, `POST /ocr/messages`, `POST /messages/cleanup`, `POST /digest/messages`, `POST /post/message`, `POST /telegram-trigger/subscribe`, `POST /telegram-trigger/unsubscribe`.
+Important env vars:
+- `TELEGRAM_SOURCE_SELECTOR_API_URL`
+- `N8N_INTERNAL_WEBHOOK_BASE_URL`
+- `WEBHOOK_URL`
+- `TELEGRAM_BOT_WEBHOOK_BASE_URL`
+- `TELEGRAM_BOT_TOKEN`
+- `OPENCODE_CONTAINER_NAME`
+
+Important bridge endpoints:
+- `GET /dialogs`
+- `GET /dialogs/send-targets`
+- `POST /messages/read`
+- `POST /messages/random`
+- `POST /messages/cleanup`
+- `POST /ocr/messages`
+- `POST /digest/messages`
+- `POST /post/message`
+- `POST /telegram-trigger/subscribe`
+- `POST /telegram-trigger/unsubscribe`
+- `GET /telegram-bot-commands/config`
+- `POST /telegram-bot-commands/config`
+- `POST /telegram-bot-commands/subscribe`
+- `POST /telegram-bot-commands/unsubscribe`
+- `POST /telegram-bot-commands/reload`
+- `POST /telegram-bot-commands/webhook`
 
 ## Telegram Rules
-Auth must stay real `Telethon`; preserve interactive first run in `app`, detached fallback to `make onboard`, restart reuse of stored credentials, explicit disconnect/reset, and no storage of login codes or 2FA secrets. Key files: `services/auth/main.py`, `services/onboarding/wizard.py`, `services/onboarding/startup.py`, `services/shared/telegram/client.py`.
+Auth must stay real `Telethon`.
 
-Fetch must stay `Telethon`-backed through `TelegramClientWrapper`; preserve real dialog/history reads, no secret chats, no bot dialogs in source selection, media downloads into run workspace, image attachments as OCR candidates, and one canonical output item per message. Never generate fake Telegram messages in production paths.
+Preserve:
+- interactive first run in `app`
+- detached fallback to `make onboard`
+- restart reuse of stored credentials
+- explicit disconnect/reset flow
+- no storage of login codes or 2FA secrets
 
-Post has two real modes: user mode via `Telethon` user-session sending, bot mode via Telegram Bot API in `services/shared/telegram/bot_client.py`. Bot mode requires `TELEGRAM_BOT_TOKEN`. Do not blur modes; if posting changes, verify both.
+Important auth details:
+- `api_hash` is persisted in `telegram_sessions/auth_state.json`
+- newly stored `api_hash` values are encrypted with `APP_MASTER_KEY`
+- legacy `enc:` values still exist as backward-compatible read path
 
-Realtime trigger uses `api/routers/telegram_trigger.py`, `api/telegram_trigger_runtime.py`, and the trigger node. Preserve subscription persistence in Postgres, reload on API startup, real `Telethon` new-message listening, canonical message mapping, internal webhook normalization, and dialog scoping. This is not a bot-update runtime.
+Fetch must stay `Telethon`-backed through `TelegramClientWrapper`.
 
-## OCR / Scoring / Digest
-OCR: local OCR is real, remote OCR is placeholder, API route supports only local OCR. Preserve image-only behavior, `ocr_status`, and per-item failures. Key files: `services/shared/providers/ocr.py`, `api/routers/ocr.py`, `services/shared/ocr_enrichment.py`.
+Preserve:
+- real dialog/history reads
+- no secret chats in the selector path
+- no bot dialogs in source selection
+- media downloads into run workspace
+- image attachments as OCR candidates
+- one canonical output item per message
 
-Scoring: worker command execution is real, provider queue/fallback is real, score interpretation is still simplified/local. Key files: `services/scoring/main.py`, `services/shared/providers/scoring.py`, `services/shared/runtime/worker_exec.py`. Do not present current scoring as full semantic LLM classification unless you wire and verify it.
+Never generate fake Telegram messages in production paths.
 
-Digest: current API/`n8n` path is worker-backed via `api/routers/digest_llm.py` and `services/shared/providers/digest.py`. OpenCode prompts go on stdin in the provider path; do not casually move them to argv.
+Realtime user-message trigger uses:
+- `api/routers/telegram_trigger.py`
+- `api/telegram_trigger_runtime.py`
+- `TG Dog Message Trigger`
+
+Preserve:
+- subscription persistence in Postgres
+- reload on API startup
+- real `Telethon` new-message listening
+- dialog scoping
+- canonical message mapping
+- internal webhook normalization through `N8N_INTERNAL_WEBHOOK_BASE_URL`
+
+This is not a bot-update runtime.
+
+Telegram bot-command ingress is a separate runtime using the Bot API.
+
+Preserve:
+- subscription persistence in Postgres
+- webhook mode when an effective public API base URL exists
+- polling mode fallback when no webhook base URL is available or DB override forces polling
+- runtime override through `POST /telegram-bot-commands/config`
+- secret-token validation on webhook mode
+- separation between bot-command ingress and `Telethon` user-account ingress
+
+Post has two real modes:
+- user mode via `Telethon`
+- bot mode via Telegram Bot API in `services/shared/telegram/bot_client.py`
+
+Bot mode requires `TELEGRAM_BOT_TOKEN`. Do not blur the two delivery paths.
+
+## OCR, AI Worker, and Legacy Classification
+OCR:
+- local OCR is real
+- remote OCR is placeholder / not implemented runtime
+- API route supports only local OCR
+- OCR is image-only; non-image media is skipped
+- important files: `services/shared/providers/ocr.py`, `services/shared/ocr_enrichment.py`, `api/routers/ocr.py`
+
+AI text step:
+- current `n8n` path is worker-backed via `api/routers/digest_llm.py` and `services/shared/providers/digest.py`
+- `TG Dog Digest` is the current node name, but the path is effectively the general AI text-processing worker path
+- prompts go to the worker on stdin; do not casually move them to argv
+- digest delivery shaping also happens here: `digest_text`, `parse_mode`, and pre-split `delivery_chunks`
+
+Legacy heuristic/classification path:
+- code still exists in `services/heuristic_filter/`, `services/classification/`, and `services/shared/providers/classification.py`
+- worker execution there is real, but score semantics are still simplified/local
+- treat this as legacy or secondary unless the user explicitly wants to revive and verify it in the current `n8n` UX
+- do not market it as the main current product path by accident
 
 ## Worker Execution
-Core provider execution relies on Docker socket access in `app` and `api`, stable worker container names, provider-specific persisted volumes, and timeout behavior. If touching worker execution, inspect `services/shared/runtime/worker_exec.py` and `docker-compose.yml`. Do not bypass worker containers for core provider execution unless the user explicitly wants new architecture.
+Core provider execution relies on:
+- Docker socket access in `app` and `api`
+- stable worker container naming via `OPENCODE_CONTAINER_NAME`
+- persisted worker auth in `tg-dog_opencode_state`
+- timeout handling in `services/shared/runtime/worker_exec.py`
+
+Do not bypass worker containers for core provider execution unless the user explicitly wants a different architecture.
 
 ## Canonical Contracts
-Canonical message items are central. Sources: `docs/operator/rework-architecture.md`, `docs/operator/contracts.md`, `api/schemas.py`, `services/shared/contracts/message.py`. Preserve these invariants: one item = one message; stable source/message metadata; media stays attached to its message item; OCR enrichment stays on the same item; downstream nodes should not need a join to reconnect OCR output. Do not casually rename schema fields or reshape canonical messages into Telegram Bot API payloads.
+Canonical message items are central. Inspect:
+- `api/schemas.py`
+- `services/shared/contracts/message.py`
+- `docs/operator/contracts.md`
 
-CLI adapters share a common envelope in `services/shared/contracts/common.py`; important fields are `contract_version`, `node_name`, `run_id`, `status`, `payload_inline`/`payload_ref`, `warnings`, `metrics`, `error`.
+Preserve these invariants:
+- one item = one message
+- stable source/message metadata
+- media stays attached to its message item
+- OCR enrichment stays on the same item
+- downstream nodes should not need a join to reconnect OCR output
 
-## Artifact Rules
-Large payloads move by file reference, not giant inline blobs. Store them in `run_artifacts`, track them from `manifest.json`, append outputs instead of mutating previous artifacts, and preserve previous output refs for downstream steps. If changing artifact behavior, inspect `services/shared/runtime/manifest.py` and `services/shared/runtime/artifacts.py`.
+Do not casually reshape canonical messages into Telegram Bot API payloads.
 
-## Timezone / Filtering / Delivery
-Timezone matters for scheduling/windows/retention. Relevant settings: `APP_TIMEZONE`, `GENERIC_TIMEZONE`, `TZ`. Current truths: `services/shared/config.py` validates `APP_TIMEZONE`, `n8n` receives timezone env vars from compose, many timestamps are stored in UTC.
+Also relevant:
+- cleanup responses carry `combined_text` and/or `formatted_messages`
+- AI text responses carry `digest_text`, `parse_mode`, `delivery_chunks`, `provider_attempts`, and `raw_output`
+- bot-command trigger payloads are their own trigger schema and should stay separate from canonical Telegram message items
 
-Filtering rules: local heuristic filtering exists; blacklist beats whitelist on conflict; scoring failure degrades to `Unclassified`.
+## Artifact and Retention Rules
+Large payloads move by file reference, not giant inline blobs.
 
-`TG Dog Messages Cleanup` is a compatibility boundary for digest/posting text. If touching cleanup or formatting, verify direct posting and digest still work.
+Store them in `run_artifacts`, track them from the manifest/artifact helpers, and preserve previous output refs for downstream steps.
 
-Delivery protections that should survive: dedup by digest fingerprint, bounded chunk counts, retry handling, partial progress tracking, cooldown on repeated failures, self-loop prevention when target equals source.
+Retention reality now:
+- implemented in `services/shared/runtime/retention.py`
+- scans `runs/*/run_meta.json`
+- keeps successful runs for 14 days
+- keeps failed runs for 30 days
+- never removes the active run when `active_run_id` is supplied
 
-## Onboarding / Bootstrap
-Key commands: `make up`, `make onboard`, `make disconnect`, `docker compose exec -it app python -m services.onboarding.ensure_connected`.
+## Onboarding and Bootstrap
+Important commands:
+- `make up`
+- `make down`
+- `make restart`
+- `make logs`
+- `make test`
+- `make migrate`
+- `make onboard`
+- `make disconnect`
+- `docker compose exec -it opencode-worker opencode providers login`
 
-Preserve interactive first-run login, detached first-run hint to run `make onboard`, and restart reuse of stored auth.
-
-`n8n` bootstraps only the owner account. Current default owner: `admin@example.com` / `N8N_PASSWORD`. If touching bootstrap, inspect `docker/n8n/bootstrap.sh`, `docker/n8n/reseed_owner_if_needed.sh`, and `tests/integration/test_n8n_bootstrap_runtime.py`.
+Current runtime behavior:
+- `make up` runs `docker compose up -d --build --wait` and then starts interactive onboarding in `app`
+- first-time detached startup prints a hint to run `make onboard`
+- `n8n` bootstraps only the owner account
+- default owner email is `admin@example.com`
+- owner password comes from `N8N_PASSWORD`
 
 ## Security
-Treat the repo as containing real secrets/auth state. Do not print, copy, or commit `.env`, `.creds`, `telegram_sessions`, worker auth volumes, provider auth state, or runtime artifacts unless the task explicitly needs a fixture. Be careful with logs/screenshots that may reveal phone numbers, API IDs, API hashes, session identifiers, bot tokens, or worker auth state. `app` and `api` are high-trust because they have Docker socket access; do not casually expand that trust boundary.
+Treat the repo as containing real secrets and auth state.
+
+Do not print, copy, or commit:
+- `.env`
+- `telegram_sessions`
+- worker auth volumes
+- provider auth state
+- runtime artifacts
+
+Be careful with logs, screenshots, and copied command output.
+
+Important footgun:
+- `docker compose config` prints interpolated secrets from `.env`
+
+`app` and `api` are high-trust because they mount the Docker socket. Do not casually expand that trust boundary.
 
 ## Docs Reality
-Likely stale docs: `README.md` may understate current custom nodes; some user docs may still reference `.env.example` where `.env` is the real flow. Prefer code over prose when docs conflict.
+Prefer code over docs when they disagree.
+
+Current docs policy:
+- keep docs small and current
+- update docs in the same task when runtime behavior materially changes, unless the user explicitly wants code-only work
+- delete stale speculative docs instead of preserving a misleading doc graveyard
 
 ## Verification
-Evidence beats assertion. Strongest evidence: live source inspection, integration tests, e2e compose tests, explicit runtime commands. There are useful tests under `tests/integration/` and `tests/e2e/`; inspect them when relevant instead of memorizing a huge list.
+Evidence beats assertion.
 
-For core integrations, verify at least one real path: Telegram auth/dialogs/message read/delivery; OCR via `tesseract --version`, real OCR route/CLI, or explicit real-path failure; scoring via real worker exec or explicit auth/runtime error; digest via real worker exec or explicit auth/runtime error.
+Strong evidence:
+- current source inspection
+- integration tests
+- e2e compose tests
+- explicit runtime commands
 
-Do not mark integration-heavy work done unless the real runtime path is still default, relevant commands/tests were run, outcomes are reported accurately, and remaining placeholders are listed explicitly.
+For integration-heavy tasks, report:
+1. what is real now
+2. what is still legacy or placeholder
+3. commands/tests run
+4. outcomes
+5. docs updated, simplified, or removed
 
-Do not present these as complete without approval: `simulate_*` runtime behavior outside tests, fake providers in production paths, placeholder Telegram messages, placeholder remote OCR as real OCR, local digest rendering as worker-backed LLM digest, heuristic score synthesis as fully real provider scoring. Test-mode branches are acceptable only when clearly gated to tests.
+For core integrations, verify at least one real path when touched:
+- Telegram auth/dialogs/read/delivery
+- user-message trigger and/or bot-command ingress
+- OCR via real `tesseract` path or explicit real-path failure
+- AI worker exec via real worker command or explicit auth/runtime error
 
-## DB / Docs / Git Hygiene
-API starts migrations on startup. If changing DB-backed runtime behavior, inspect migrations plus affected models in `api/models.py` and `services/shared/db/models.py`.
-
-If runtime behavior changes materially, update relevant docs in the same task unless the user explicitly wants code-only work.
-
-Useful wording in this repo: `n8n path is real`; `worker command execution is real, score semantics remain simplified`.
-
-Do not rely on generated clutter like `.pytest_runtime/`, run outputs, or local auth state.
-
-Git rules: do not run `git config` to fix identity; use one-off author only if commit is required and identity is missing; do not amend unless user explicitly requests it; do not use destructive git commands without explicit approval.
-
-Before finalizing a commit-oriented task, include: 1) what is real now, 2) what is still legacy/placeholder, 3) verification commands run, 4) test results summary, 5) docs updated or intentionally left stale.
-
-## Useful Commands
-Useful current commands: `make up`, `make down`, `make restart`, `make logs`, `make test`, `make migrate`, `make onboard`, `make disconnect`, `docker compose exec -it opencode-worker opencode providers login`.
-
-Prefer the current `.env`-based flow over stale `.env.example` examples.
-
-## Heuristics
-User workflows -> think `n8n` first. Telegram runtime -> think `Telethon` first. OCR -> think local `tesseract` first. Digest/scoring provider execution -> think worker containers first.
-
-Do not reintroduce without explicit approval: repo-managed workflow import on startup, fake Telegram runtime paths, silent simulation flags in default runtime, direct Docker control from `n8n`, superseded custom scheduler architecture, remote OCR marketed as available when still placeholder.
-
-Try to preserve during refactors: first-run onboarding, owner bootstrap, custom node loading, workflow persistence across restart, selector persistence, canonical message output from reader, OCR enrichment in place, digest worker execution, both sender modes in `TG Dog Post Message`, trigger subscription persistence.
+## Git and Cleanup Hygiene
+- Do not run destructive git commands without explicit approval.
+- Do not amend commits unless explicitly requested.
+- Do not rely on generated clutter like `.pytest_runtime/`, local run outputs, or local auth state.
 
 ## Final Reminder
-TG-Dog already contains real integrations, some stale docs, and strong tests. A good agent here reads the current runtime first, preserves real paths by default, and is honest about remaining mismatches.
+TG-Dog already has a real `n8n` path, real Telegram integrations, a real OCR path, and a real worker-backed AI text step. Good work here means reading the current runtime first, preserving those real paths, and being honest about what is still legacy or placeholder.

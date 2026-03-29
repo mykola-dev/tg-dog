@@ -677,9 +677,17 @@ main().catch((error) => {{
     return payload
 
 
-def _digest_execute_result(env: dict[str, str], input_messages: list[dict[str, object]]) -> list[dict[str, object]]:
+def _digest_execute_result(
+    env: dict[str, str],
+    input_messages: list[dict[str, object]],
+    *,
+    include_title: bool = True,
+    title_template: str = '📰 ДАЙДЖЕСТ НОВИН ЗА {{$now.setLocale("uk").toFormat("d MMMM")}}',
+) -> list[dict[str, object]]:
     node_path = f"{CUSTOM_EXTENSIONS_DIR}/{DIGEST_NODE_FOLDER}/TelegramDigest.node.js"
     input_messages_literal = json.dumps(input_messages)
+    include_title_literal = json.dumps(include_title)
+    title_template_literal = json.dumps(title_template)
     script = f"""
 process.env.NODE_PATH = '/usr/local/lib/node_modules/n8n/node_modules';
 require('module').Module._initPaths();
@@ -695,6 +703,8 @@ async function main() {{
       if (name === 'commandTemplate') return 'opencode run -m opencode/minimax-m2.5-free "{{prompt}}"';
       if (name === 'systemPrompt') return 'Create a compact Telegram digest from the provided messages.';
       if (name === 'outputFormat') return 'markdown_v2';
+      if (name === 'includeTitle') return {include_title_literal};
+      if (name === 'titleTemplate') return {title_template_literal};
       throw new Error(`unexpected node parameter ${{name}}`);
     }},
   }};
@@ -1241,5 +1251,6 @@ def test_n8n_digest_node_returns_digest_text() -> None:
         assert isinstance(payload["digest_text"], str) and payload["digest_text"].strip()
         assert payload["parse_mode"] == "markdown_v2"
         assert isinstance(payload["delivery_chunks"], list) and payload["delivery_chunks"]
+        assert payload["digest_text"].startswith("*📰 ДАЙДЖЕСТ НОВИН ЗА ")
     finally:
         _compose_cmd(env, "down", "-v", "--remove-orphans")

@@ -46,3 +46,47 @@ def test_prepare_digest_delivery_code_blocks_stay_fenced_after_chunking() -> Non
 
     assert len(prepared.chunks) > 1
     assert all(chunk.startswith("```") and chunk.endswith("```") for chunk in prepared.chunks)
+
+
+def test_prepare_digest_delivery_adds_bold_title_to_single_chunk() -> None:
+    prepared = prepare_digest_delivery(
+        raw_text="- Item one\n- Item two",
+        output_format="markdown_v2",
+        title_text="📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня",
+    )
+
+    assert prepared.text.startswith("*📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня*")
+    assert prepared.text.split("\n\n", 1)[1].startswith("\\-")
+    assert prepared.chunks == [prepared.text]
+
+
+def test_prepare_digest_delivery_adds_part_labels_to_multi_chunk_title() -> None:
+    raw_text = "\n\n".join(f"- Block {index}: {'text ' * 60}" for index in range(1, 6))
+
+    prepared = prepare_digest_delivery(
+        raw_text=raw_text,
+        output_format="markdown_v2",
+        title_text="📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня",
+        chunk_size=180,
+    )
+
+    assert len(prepared.chunks) > 1
+    assert prepared.text.startswith("*📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня*")
+    assert prepared.chunks[0].startswith("*📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня \\(частина 1/")
+    assert prepared.chunks[-1].startswith(f"*📰 ДАЙДЖЕСТ НОВИН ЗА 29 березня \\(частина {len(prepared.chunks)}/{len(prepared.chunks)}\\)*")
+    assert all(len(chunk) <= 180 for chunk in prepared.chunks)
+
+
+def test_prepare_digest_delivery_adds_plain_text_part_labels() -> None:
+    raw_text = " ".join("word" for _ in range(120))
+
+    prepared = prepare_digest_delivery(
+        raw_text=raw_text,
+        output_format="plain_text",
+        title_text="Дайджест новин за 29 березня",
+        chunk_size=80,
+    )
+
+    assert len(prepared.chunks) > 1
+    assert prepared.chunks[0].startswith("Дайджест новин за 29 березня (частина 1/")
+    assert prepared.text.startswith("Дайджест новин за 29 березня\n\n")
