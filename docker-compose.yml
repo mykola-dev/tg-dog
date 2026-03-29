@@ -124,7 +124,7 @@ services:
   opencode-worker:
     build:
       context: .
-      dockerfile: docker/providers/opencode-worker.Dockerfile
+      dockerfile: docker/llm/opencode-worker.Dockerfile
     attach: false
     restart: unless-stopped
     container_name: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker

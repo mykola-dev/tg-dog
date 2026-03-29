@@ -682,7 +682,7 @@ def _digest_execute_result(
     input_messages: list[dict[str, object]],
     *,
     include_title: bool = True,
-    title_template: str = '📰 ДАЙДЖЕСТ НОВИН ЗА {{$now.setLocale("uk").toFormat("d MMMM")}}',
+    title_template: str = '={{ "📰 ДАЙДЖЕСТ НОВИН ЗА " + $now.setLocale("uk").toFormat("d MMMM") }}',
 ) -> list[dict[str, object]]:
     node_path = f"{CUSTOM_EXTENSIONS_DIR}/{DIGEST_NODE_FOLDER}/TelegramDigest.node.js"
     input_messages_literal = json.dumps(input_messages)

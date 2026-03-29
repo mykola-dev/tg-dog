@@ -27,7 +27,7 @@ const DEFAULT_SYSTEM_PROMPT = [
     "- Never use **bold** or __italic__ syntax.",
     "- Close every formatting marker correctly.",
 ].join("\n");
-const DEFAULT_TITLE_TEMPLATE = '📰 ДАЙДЖЕСТ НОВИН ЗА {{$now.setLocale("uk").toFormat("d MMMM")}}';
+const DEFAULT_TITLE_TEMPLATE = '={{ "📰 ДАЙДЖЕСТ НОВИН ЗА " + $now.setLocale("uk").toFormat("d MMMM") }}';
 
 async function createDigest(payload) {
     const response = await fetch(`${API_BASE_URL}/digest/messages`, {
@@ -100,7 +100,7 @@ class TelegramDigest {
                     name: "titleTemplate",
                     type: "string",
                     default: DEFAULT_TITLE_TEMPLATE,
-                    description: "Supports n8n expressions like {{$now.setLocale(\"uk\").toFormat(\"d MMMM\")}}",
+                    description: "Supports n8n expressions like ={{ \"📰 ДАЙДЖЕСТ НОВИН ЗА \" + $now.setLocale(\"uk\").toFormat(\"d MMMM\") }}",
                     typeOptions: { rows: 2 },
                     displayOptions: {
                         show: {

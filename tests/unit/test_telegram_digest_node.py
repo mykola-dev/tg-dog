@@ -5,6 +5,12 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def test_digest_node_default_title_template_uses_n8n_expression_syntax() -> None:
+    source = (ROOT / "n8n/custom-nodes/telegram-digest/TelegramDigest.node.js").read_text(encoding="utf-8")
+
+    assert 'const DEFAULT_TITLE_TEMPLATE = \'={{ "📰 ДАЙДЖЕСТ НОВИН ЗА " + $now.setLocale("uk").toFormat("d MMMM") }}\';' in source
+
+
 def test_digest_node_sends_title_text_to_api_payload() -> None:
     node_path = ROOT / "n8n/custom-nodes/telegram-digest/TelegramDigest.node.js"
     script = f"""
