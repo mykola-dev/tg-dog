@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS schedule_settings (
+    key VARCHAR(64) PRIMARY KEY,
+    value VARCHAR(128) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -1,0 +1,154 @@
+name: tg-dog
+
+services:
+  postgres:
+    image: postgres:16
+    attach: false
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: ${COMPOSE_PROJECT_NAME:-tg-dog}-app
+    depends_on:
+      - postgres
+    environment:
+      APP_MASTER_KEY: ${APP_MASTER_KEY}
+      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      WORKSPACE_PATH: /workspace/run_artifacts
+      TELEGRAM_SESSION_PATH: /workspace/telegram_sessions
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OPENCODE_CONTAINER_NAME: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
+    volumes:
+      - telegram_sessions:/workspace/telegram_sessions
+      - run_artifacts:/workspace/run_artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app
+    command: ["python", "-m", "services.onboarding.startup"]
+    stdin_open: true
+    tty: true
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      APP_MASTER_KEY: ${APP_MASTER_KEY}
+      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_WEBHOOK_BASE_URL: ${TELEGRAM_BOT_WEBHOOK_BASE_URL:-}
+      WORKSPACE_PATH: /workspace/run_artifacts
+      TELEGRAM_SESSION_PATH: /workspace/telegram_sessions
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OPENCODE_CONTAINER_NAME: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
+    volumes:
+      - telegram_sessions:/workspace/telegram_sessions
+      - run_artifacts:/workspace/run_artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  n8n:
+    build:
+      context: .
+      dockerfile: docker/n8n/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - api
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${APP_MASTER_KEY}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://n8n:5678/}
+      N8N_SECURE_COOKIE: false
+      N8N_ENDPOINT_HEALTH: healthz
+      N8N_DIAGNOSTICS_ENABLED: false
+      N8N_VERSION_NOTIFICATIONS_ENABLED: false
+      N8N_TEMPLATES_ENABLED: false
+      N8N_CUSTOM_EXTENSIONS: /custom-extensions
+      N8N_INTERNAL_WEBHOOK_BASE_URL: http://n8n:5678
+      TELEGRAM_SOURCE_SELECTOR_API_URL: http://api:8000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      GENERIC_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      TZ: ${APP_TIMEZONE:-UTC}
+      N8N_BOOTSTRAP_OWNER_EMAIL: admin@example.com
+      N8N_BOOTSTRAP_OWNER_FIRST_NAME: Admin
+      N8N_BOOTSTRAP_OWNER_LAST_NAME: User
+      N8N_BOOTSTRAP_OWNER_PASSWORD: ${N8N_PASSWORD}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./docker/n8n:/bootstrap:ro
+      - ./n8n/custom-nodes:/custom-extensions:ro
+    ports:
+      - "${N8N_PORT:-50000}:5678"
+    command: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+
+  opencode-worker:
+    build:
+      context: .
+      dockerfile: docker/providers/opencode-worker.Dockerfile
+    attach: false
+    restart: unless-stopped
+    container_name: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
+    environment:
+      PROVIDER_TIMEOUT_SECONDS: ${PROVIDER_TIMEOUT_SECONDS:-45}
+      XDG_CONFIG_HOME: /workspace/opencode/.config
+      XDG_DATA_HOME: /workspace/opencode/.local/share
+    volumes:
+      - opencode_state:/workspace/opencode
+    command: ["sleep", "infinity"]
+
+volumes:
+  postgres_data:
+    external: true
+    name: tg-dog_postgres_data
+  telegram_sessions:
+    external: true
+    name: tg-dog_telegram_sessions
+  run_artifacts:
+    external: true
+    name: tg-dog_run_artifacts
+  opencode_state:
+    external: true
+    name: tg-dog_opencode_state
+  n8n_data:
+    external: true
+    name: tg-dog_n8n_data
