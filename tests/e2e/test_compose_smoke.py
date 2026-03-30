@@ -68,7 +68,7 @@ def test_clean_stack_boots_and_exposes_required_services() -> None:
         assert ps.returncode == 0, ps.stderr
         text = ps.stdout.lower()
         assert "postgres" in text
-        assert "app" in text
+        assert "api" in text
         assert "n8n" in text
     finally:
         _compose(env, "down", "-v", "--remove-orphans")

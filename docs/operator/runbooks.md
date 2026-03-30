@@ -10,8 +10,8 @@
 - `make migrate`
 - `make connect-telegram`
 - `make reset-telegram`
+- `make login-opencode`
 - `make reset-data`
-- `docker compose exec -it opencode-worker opencode providers login`
 
 ## First-Run Checks
 
@@ -20,6 +20,7 @@
 - `docker compose ps`
 - `http://localhost:8000/health` should return `{"status":"ok"}`
 - open `http://localhost:50000`
+- `make up` removes orphaned containers from older compose revisions automatically
 
 ### Verify n8n first-run setup
 
@@ -28,7 +29,7 @@
 
 ### Verify Telegram onboarding
 
-- on first `make up`, the app should start the interactive onboarding flow
+- on first `make up`, the API container should start the interactive onboarding flow
 - if startup was detached, run `make connect-telegram`
 - if auth was broken or stale, run `make reset-telegram` and connect again
 
@@ -55,21 +56,22 @@
 
 - Bot API `409 Conflict` usually means another consumer is already using `getUpdates` or the webhook/polling mode is fighting with another process.
 
-## Worker Runtime
+## OpenCode Runtime
 
 ### One-time login
 
-- `docker compose exec -it opencode-worker opencode providers login`
+- `make login-opencode`
+- or `docker compose exec -it api opencode providers login`
 
 ### Basic checks
 
-- `docker compose exec opencode-worker opencode --version`
-- if worker-backed AI calls fail with auth errors, repeat the login inside `opencode-worker`
+- `docker compose exec api opencode --version`
+- if OpenCode-backed AI calls fail with auth errors, repeat the login inside `api`
 
 ### Recovery
 
-- restart worker: `docker compose up -d opencode-worker`
-- if worker execution itself fails, verify `/var/run/docker.sock` is still mounted into `api` and `app`
+- restart API: `docker compose up -d --build api`
+- if OpenCode execution itself fails, inspect `docker compose logs api`
 
 ## Workflow Runtime Checks
 
@@ -104,6 +106,5 @@ Treat `run_artifacts` as sensitive data during cleanup and debugging.
 
 ## Security Boundaries
 
-- `app` and `api` are high-trust because they mount `/var/run/docker.sock`
 - do not publish `.env`, `telegram_sessions`, `run_artifacts`, `n8n_data`, `postgres_data`, or `opencode_state`
 - do not casually share output from `docker compose config`, because it prints resolved secrets

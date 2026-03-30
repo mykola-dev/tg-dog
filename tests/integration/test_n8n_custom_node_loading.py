@@ -1283,7 +1283,7 @@ def test_n8n_digest_node_returns_digest_text() -> None:
         pytest.skip(f"Docker Compose is not available: {docker_reason}")
 
     env = _base_env()
-    up = _compose_up(env, "postgres", "api", "n8n", "opencode-worker")
+    up = _compose_up(env, "postgres", "api", "n8n")
     assert up.returncode == 0, up.stderr or up.stdout
 
     try:

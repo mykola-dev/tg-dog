@@ -4,8 +4,7 @@ import os
 import shlex
 from dataclasses import dataclass
 
-from services.shared.runtime.opencode import opencode_container_name
-from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker, exec_in_worker_with_input
+from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker, exec_in_worker_with_input, opencode_runtime_name
 
 
 @dataclass
@@ -19,29 +18,28 @@ class DigestProviderResponse:
 def _provider_from_command(command_template: str) -> tuple[str, str]:
     return (
         "opencode_cli",
-        opencode_container_name(),
+        opencode_runtime_name(),
     )
 
 
 def run_digest_command(*, command_template: str, prompt: str, timeout_seconds: int = 180) -> DigestProviderResponse:
-    provider_id, container_name = _provider_from_command(command_template)
+    provider_id, runtime_name = _provider_from_command(command_template)
     template_parts = shlex.split(command_template)
 
     if provider_id == "opencode_cli":
         command = [part for part in template_parts if part != "{prompt}"]
         result: WorkerExecResult = exec_in_worker_with_input(
-            container_name,
             command,
             timeout_seconds,
             stdin_text=prompt,
         )
     else:
         command = [part.format(prompt=prompt) for part in template_parts]
-        result = exec_in_worker(container_name, command, timeout_seconds)
+        result = exec_in_worker(command, timeout_seconds)
 
     details = {
         "provider_id": provider_id,
-        "container_name": container_name,
+        "runtime_name": runtime_name,
         "command": command,
         "stdin_length": len(prompt) if provider_id == "opencode_cli" else None,
         "exit_code": result.exit_code,

@@ -5,10 +5,8 @@ Project name: `tg-dog`.
 ## Runtime Topology
 
 - `postgres` stores relational state for the backend and `n8n`.
-- `api` is the FastAPI bridge for custom nodes and Telegram runtimes.
+- `api` is the FastAPI bridge, the main Python backend, and the runtime entrypoint for helper commands and OpenCode execution.
 - `n8n` is the user-facing workflow editor, scheduler, and long-lived execution runtime.
-- `app` handles onboarding and shared helper commands.
-- `opencode-worker` runs the OpenCode CLI with isolated persisted auth state.
 
 Current compose stack lives in `docker-compose.yml` and uses the compose project name `tg-dog`.
 
@@ -21,20 +19,14 @@ Current compose stack lives in `docker-compose.yml` and uses the compose project
   - loads Telegram bot-command subscriptions/config from Postgres
   - starts the Telethon-based message trigger runtime
   - refreshes Bot API webhook or polling mode for bot-command ingress
+  - runs Telegram onboarding and helper CLI flows when invoked with `docker compose exec api ...`
+  - runs the local OpenCode CLI with persisted auth/state
 
 - `n8n`
   - stores workflows and executions in `tg-dog_n8n_data`
   - uses the standard `n8n` first-run owner setup on a fresh data volume
   - loads local custom nodes from `./n8n/custom-nodes`
   - is the source of truth for user-created workflows
-
-- `app`
-  - runs first-time onboarding and helper commands
-  - reuses the same shared Python runtime as the backend services
-
-- `opencode-worker`
-  - stays idle until `api` or `app` runs provider commands through `docker exec`
-  - stores OpenCode auth/state in `tg-dog_opencode_state`
 
 ## Persistent Volumes
 
@@ -53,7 +45,7 @@ With the default project name, these appear as `tg-dog_*` volumes.
 - Telegram bot-command ingress -> real -> Bot API webhook or polling in `api/telegram_bot_command_runtime.py`
 - Bot-mode delivery -> real -> Telegram Bot API via `services/shared/telegram/bot_client.py`
 - OCR -> real local | placeholder remote -> only local `tesseract` path is implemented
-- AI text step -> real -> `api/routers/digest_llm.py` calls `opencode-worker`
+- AI text step -> real -> `api/routers/digest_llm.py` runs local OpenCode CLI inside `api`
 - heuristic / classification path -> legacy or secondary -> code exists under `services/`, but it is not the main current `n8n` UX
 
 ## Custom Nodes In Current Runtime
@@ -77,7 +69,6 @@ With the default project name, these appear as `tg-dog_*` volumes.
 
 ## Security Notes
 
-- `app` and `api` mount `/var/run/docker.sock`; treat both as high-trust containers.
 - `n8n` talks to `api` over internal HTTP and does not need Docker socket access.
 - `telegram_sessions`, `run_artifacts`, `n8n_data`, `postgres_data`, and `opencode_state` should be treated as sensitive runtime data.
 - `docker compose config` prints interpolated secrets from `.env` and should be treated as secret-bearing output.

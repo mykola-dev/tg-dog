@@ -118,7 +118,7 @@ def test_stack_boot() -> None:
         assert ps.returncode == 0, ps.stderr
         ps_text = ps.stdout.lower()
         assert "postgres" in ps_text
-        assert "app" in ps_text
+        assert "api" in ps_text
         assert "n8n" in ps_text
 
         n8n_health = _wait_for_n8n_health(env)
@@ -129,7 +129,7 @@ def test_stack_boot() -> None:
             env,
             "run",
             "--rm",
-            "app",
+            "api",
             "python",
             "-c",
             "from services.shared.cli import build_success_envelope; print(build_success_envelope(node_name='test', run_id='run').status)",
@@ -141,7 +141,7 @@ def test_stack_boot() -> None:
             env,
             "run",
             "--rm",
-            "app",
+            "api",
             "python",
             "-m",
             "services.shared.db.migrations.apply",
@@ -152,7 +152,7 @@ def test_stack_boot() -> None:
             env,
             "run",
             "--rm",
-            "app",
+            "api",
             "python",
             "-m",
             "services.shared.runtime.manifest",
@@ -167,7 +167,7 @@ def test_stack_boot() -> None:
             env,
             "run",
             "--rm",
-            "app",
+            "api",
             "python",
             "-c",
             "from pathlib import Path; p=Path('/workspace/run_artifacts/runs/stack-boot-test/manifest.json'); print(p.exists());",

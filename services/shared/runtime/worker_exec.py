@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass
 
@@ -13,24 +14,23 @@ class WorkerExecResult:
     error_code: str | None
 
 
-def exec_in_worker(container_name: str, command: list[str], timeout_seconds: int) -> WorkerExecResult:
-    return exec_in_worker_with_input(container_name, command, timeout_seconds, stdin_text=None)
+def opencode_runtime_name() -> str:
+    return os.getenv("OPENCODE_RUNTIME_NAME", "api")
+
+
+def exec_in_worker(command: list[str], timeout_seconds: int) -> WorkerExecResult:
+    return exec_in_worker_with_input(command, timeout_seconds, stdin_text=None)
 
 
 def exec_in_worker_with_input(
-    container_name: str,
     command: list[str],
     timeout_seconds: int,
     *,
     stdin_text: str | None,
 ) -> WorkerExecResult:
-    docker_command = ["docker", "exec"]
-    if stdin_text is not None:
-        docker_command.append("-i")
-    docker_command.extend([container_name, *command])
     try:
         result = subprocess.run(
-            docker_command,
+            command,
             capture_output=True,
             text=True,
             input=stdin_text,

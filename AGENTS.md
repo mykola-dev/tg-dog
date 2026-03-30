@@ -23,7 +23,7 @@ Current product truth:
 - Telegram user-account auth, dialog listing, message reads, realtime user-message triggers, and user-mode delivery use real `Telethon`.
 - Bot-command ingress and bot-mode delivery use the real Telegram Bot API when `TELEGRAM_BOT_TOKEN` is configured.
 - OCR is real only through local `tesseract`.
-- The current AI text step is worker-backed through `api -> /digest/messages -> opencode-worker`.
+- The current AI text step runs through `api -> /digest/messages -> local opencode CLI`.
 - The node is still named `TG Dog Digest`, but in practice it is the current general AI text-processing step, not just a digest-only feature.
 - Legacy heuristic/classification code still exists in `services/`, but it is not the main current `n8n` UX and should not be treated as the primary product path unless explicitly revived and verified.
 
@@ -74,17 +74,12 @@ Compose project name: `tg-dog`.
 
 Main containers:
 - `postgres`
-- `app`
 - `api`
 - `n8n`
-- `opencode-worker`
 
 Meaning that matters:
-- `api`: FastAPI bridge for custom nodes; runs DB migrations on startup; loads and starts Telegram trigger runtime; loads and refreshes Telegram bot-command runtime.
+- `api`: FastAPI bridge for custom nodes; runs DB migrations on startup; loads and starts Telegram trigger runtime; loads and refreshes Telegram bot-command runtime; also serves as the main Python runtime for helper commands and OpenCode execution.
 - `n8n`: workflow editor/runtime; stores workflows and executions; bootstraps only the owner account; loads local custom nodes from `./n8n/custom-nodes`.
-- `app`: onboarding and shared helper runtime; starts onboarding and then idles.
-- `opencode-worker`: isolated OpenCode CLI worker with persisted auth/state.
-- `app` and `api` both mount `/var/run/docker.sock`; worker execution is done from there with `docker exec`.
 
 Persistent Docker volumes that matter:
 - `tg-dog_postgres_data`
@@ -148,7 +143,7 @@ Important bridge endpoints:
 Auth must stay real `Telethon`.
 
 Preserve:
-- interactive first run in `app`
+- interactive first run through `api`
 - detached fallback to `make connect-telegram`
 - restart reuse of stored credentials
 - explicit disconnect/reset flow
@@ -211,7 +206,7 @@ OCR:
 - important files: `services/shared/providers/ocr.py`, `services/shared/ocr_enrichment.py`, `api/routers/ocr.py`
 
 AI text step:
-- current `n8n` path is worker-backed via `api/routers/digest_llm.py` and `services/shared/providers/digest.py`
+- current `n8n` path is API-local via `api/routers/digest_llm.py` and `services/shared/providers/digest.py`
 - `TG Dog Digest` is the current node name, but the path is effectively the general AI text-processing worker path
 - prompts go to the worker on stdin; do not casually move them to argv
 - digest delivery shaping also happens here: `digest_text`, `parse_mode`, and pre-split `delivery_chunks`
@@ -224,12 +219,11 @@ Legacy heuristic/classification path:
 
 ## Worker Execution
 Core provider execution relies on:
-- Docker socket access in `app` and `api`
-- stable worker container naming through the compose project name plus `-opencode-worker`
 - persisted worker auth in `tg-dog_opencode_state`
+- local OpenCode CLI execution inside `api`
 - timeout handling in `services/shared/runtime/worker_exec.py`
 
-Do not bypass worker containers for core provider execution unless the user explicitly wants a different architecture.
+Do not bypass the real local OpenCode CLI execution path for core provider execution unless the user explicitly wants a different architecture.
 
 ## Canonical Contracts
 Canonical message items are central. Inspect:
@@ -273,11 +267,11 @@ Important commands:
 - `make migrate`
 - `make connect-telegram`
 - `make reset-telegram`
+- `make login-opencode`
 - `make reset-data`
-- `docker compose exec -it opencode-worker opencode providers login`
 
 Current runtime behavior:
-- `make up` runs `docker compose up -d --build --wait` and then starts interactive onboarding in `app`
+- `make up` runs `docker compose up -d --build --wait` and then starts interactive onboarding in `api`
 - first-time detached startup prints a hint to run `make connect-telegram`
 - `n8n` uses its standard first-run owner setup on a fresh data volume
 
@@ -296,7 +290,6 @@ Be careful with logs, screenshots, and copied command output.
 Important footgun:
 - `docker compose config` prints interpolated secrets from `.env`
 
-`app` and `api` are high-trust because they mount the Docker socket. Do not casually expand that trust boundary.
 
 ## Docs Reality
 Prefer code over docs when they disagree.

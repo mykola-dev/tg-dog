@@ -62,6 +62,7 @@ make up
 That boots the Docker stack and handles first-time onboarding when needed.
 
 Named Docker volumes are created automatically on first boot.
+`make up` also removes orphaned containers left behind by older compose topology changes.
 
 ### 3. Open `n8n`
 
@@ -85,13 +86,13 @@ If you started everything in detached mode and skipped the wizard by accident, j
 make connect-telegram
 ```
 
-### 5. Log in the AI worker once
+### 5. Log in the AI runtime once
 
 ```bash
-docker compose exec -it opencode-worker opencode providers login
+make login-opencode
 ```
 
-Right now that worker powers the main AI text step. Summaries are one use case, but rewrites, extraction, classification, comments, and other text tasks fit the same path too.
+Right now the local OpenCode runtime inside `api` powers the main AI text step. Summaries are one use case, but rewrites, extraction, classification, comments, and other text tasks fit the same path too.
 
 ## 📲 Telegram Setup
 
@@ -218,10 +219,10 @@ make restart
 make logs
 make connect-telegram
 make reset-telegram
+make login-opencode
 make reset-data
 make test
 make migrate
-docker compose exec -it opencode-worker opencode providers login
 ```
 
 ## ⚠️ Important Stuff You Should Not Ignore
@@ -229,7 +230,6 @@ docker compose exec -it opencode-worker opencode providers login
 - Do **not** commit `.env`.
 - Do **not** dump Telegram session data into git.
 - Do **not** publish Docker volume data.
-- `app` and `api` mount `/var/run/docker.sock`, so treat them as high-trust containers.
 
 ## 📚 Want More Details?
 

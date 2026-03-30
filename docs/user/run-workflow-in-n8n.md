@@ -22,10 +22,10 @@ Notes:
 
 ## Build a workflow
 
-- Before using `TG Dog Digest`, log in once inside the OpenCode worker:
+- Before using `TG Dog Digest`, log in once inside the API container:
 
 ```bash
-docker compose exec -it opencode-worker opencode providers login
+docker compose exec -it api opencode providers login
 ```
 
 - Create a new workflow in `n8n`.
@@ -51,7 +51,7 @@ docker compose exec -it opencode-worker opencode providers login
 - `TG Dog Message Trigger` keeps using `N8N_INTERNAL_WEBHOOK_BASE_URL`, so user-account realtime flows do not depend on the public bot webhook tunnel.
 - Add `TG Dog OCR` after the reader when you want OCR enrichment.
 - Add `TG Dog Messages Cleanup` after OCR.
-- Add `TG Dog Digest` if you want a worker-backed AI text step.
+- Add `TG Dog Digest` if you want an OpenCode-backed AI text step.
 - Add `TG Dog Post Message` if you want to send the cleaned text or digest to Telegram.
 
 ## Delivery notes

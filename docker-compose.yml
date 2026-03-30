@@ -15,35 +15,6 @@ services:
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
       - postgres_data:/var/lib/postgresql/data
 
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    container_name: ${COMPOSE_PROJECT_NAME:-tg-dog}-app
-    depends_on:
-      - postgres
-    environment:
-      APP_MASTER_KEY: ${APP_MASTER_KEY}
-      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      WORKSPACE_PATH: /workspace/run_artifacts
-      TELEGRAM_SESSION_PATH: /workspace/telegram_sessions
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - telegram_sessions:/workspace/telegram_sessions
-      - run_artifacts:/workspace/run_artifacts
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/app
-    command: ["python", "-m", "services.onboarding.startup"]
-    stdin_open: true
-    tty: true
-
   api:
     build:
       context: .
@@ -58,6 +29,8 @@ services:
       TELEGRAM_BOT_WEBHOOK_BASE_URL: ${TELEGRAM_BOT_WEBHOOK_BASE_URL:-}
       WORKSPACE_PATH: /workspace/run_artifacts
       TELEGRAM_SESSION_PATH: /workspace/telegram_sessions
+      XDG_CONFIG_HOME: /workspace/opencode/.config
+      XDG_DATA_HOME: /workspace/opencode/.local/share
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB}
@@ -66,7 +39,7 @@ services:
     volumes:
       - telegram_sessions:/workspace/telegram_sessions
       - run_artifacts:/workspace/run_artifacts
-      - /var/run/docker.sock:/var/run/docker.sock
+      - opencode_state:/workspace/opencode
       - ./:/app
     ports:
       - "${API_PORT:-8000}:8000"
@@ -112,21 +85,6 @@ services:
       - ./n8n/custom-nodes:/custom-extensions:ro
     ports:
       - "${N8N_PORT:-50000}:5678"
-
-  opencode-worker:
-    build:
-      context: .
-      dockerfile: docker/llm/opencode-worker.Dockerfile
-    attach: false
-    restart: unless-stopped
-    container_name: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
-    environment:
-      PROVIDER_TIMEOUT_SECONDS: ${PROVIDER_TIMEOUT_SECONDS:-45}
-      XDG_CONFIG_HOME: /workspace/opencode/.config
-      XDG_DATA_HOME: /workspace/opencode/.local/share
-    volumes:
-      - opencode_state:/workspace/opencode
-    command: ["sleep", "infinity"]
 
 volumes:
   postgres_data:

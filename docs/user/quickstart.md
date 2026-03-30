@@ -29,9 +29,10 @@ Recommended for stable interactive onboarding:
 make up
 ```
 
-`make up` runs `docker compose up -d --build --wait` and then attaches the Telegram onboarding flow inside `app`.
+`make up` runs `docker compose up -d --build --wait --remove-orphans` and then attaches the Telegram onboarding flow inside `api`.
 
 Named Docker volumes are created automatically on first start.
+If you previously ran an older stack shape, `make up` also removes orphaned containers from the old compose topology.
 
 ## 3) Open n8n
 
@@ -54,13 +55,13 @@ Follow these in order:
 
 ## 6) Run first digest
 
-Before using `TG Dog Digest`, log in inside the worker:
+Before using `TG Dog Digest`, log in inside the API container:
 
 ```bash
-docker compose exec -it opencode-worker opencode providers login
+make login-opencode
 ```
 
-That worker is the current AI text-processing path used by `TG Dog Digest`.
+That local OpenCode runtime inside `api` is the current AI text-processing path used by `TG Dog Digest`.
 
 Then build the first workflow.
 
@@ -97,7 +98,6 @@ For the node-by-node walkthrough, see `docs/user/run-workflow-in-n8n.md`.
 ## Security notes
 
 - Do not commit `.env`, `telegram_sessions`, `run_artifacts`, or exported Docker volume data.
-- `app` and `api` are privileged runtime containers because they mount `/var/run/docker.sock`.
 - Telegram session state and worker auth are meant to stay in Docker volumes, not in tracked files.
 
 ## Reset all data

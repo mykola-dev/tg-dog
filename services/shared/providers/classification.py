@@ -4,8 +4,7 @@ import os
 import shlex
 from dataclasses import dataclass
 
-from services.shared.runtime.opencode import opencode_container_name
-from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker
+from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker, opencode_runtime_name
 
 
 @dataclass
@@ -46,13 +45,13 @@ def _normalize_error_code(result: WorkerExecResult) -> str | None:
 
 def _build_attempt_details(
     provider_id: str,
-    container_name: str,
+    runtime_name: str,
     command: list[str],
     result: WorkerExecResult,
 ) -> dict:
     return {
         "provider_id": provider_id,
-        "container_name": container_name,
+        "runtime_name": runtime_name,
         "command": command,
         "exit_code": result.exit_code,
         "stderr_excerpt": _short_excerpt(result.stderr),
@@ -76,7 +75,7 @@ def _provider_preset(provider_id: str) -> dict[str, str] | None:
     presets: dict[str, dict[str, str]] = {
         "opencode_cli": {
             "display_name": "OpenCode CLI",
-            "container_name": opencode_container_name(),
+            "runtime_name": opencode_runtime_name(),
             "command_template": os.getenv(
                 "OPENCODE_COMMAND_TEMPLATE",
                 "opencode run -m opencode/minimax-m2.5-free \"{prompt}\"",
@@ -93,14 +92,14 @@ class CommandClassificationProvider(ClassificationProvider):
 
     def classify_text(self, text: str) -> ClassificationProviderResponse:
         preset = _provider_preset(self.provider_id)
-        container_name = preset["container_name"] if preset else "unknown"
+        runtime_name = preset["runtime_name"] if preset else "unknown"
 
         if _is_test_mode() and self.config.get("simulate_failure", False):
             return ClassificationProviderResponse(
                 success=False,
                 details={
                     "provider_id": self.provider_id,
-                    "container_name": container_name,
+                    "runtime_name": runtime_name,
                     "error_code": "SIMULATED_FAILURE",
                     "stderr_excerpt": f"{self.provider_id} simulated failure",
                     "stdout_excerpt": None,
@@ -116,7 +115,7 @@ class CommandClassificationProvider(ClassificationProvider):
                 reason=f"Scored by {self.provider_id} (test)",
                 details={
                     "provider_id": self.provider_id,
-                    "container_name": container_name,
+                    "runtime_name": runtime_name,
                     "error_code": None,
                     "stderr_excerpt": None,
                     "stdout_excerpt": "simulated score",
@@ -142,13 +141,13 @@ class CommandClassificationProvider(ClassificationProvider):
                 os.getenv("PROVIDER_TIMEOUT_SECONDS", "45"),
             )
         )
-        container_name = preset["container_name"]
-        result = exec_in_worker(container_name, command, timeout_seconds)
+        runtime_name = preset["runtime_name"]
+        result = exec_in_worker(command, timeout_seconds)
 
         if not result.success:
             return ClassificationProviderResponse(
                 success=False,
-                details=_build_attempt_details(self.provider_id, container_name, command, result),
+                details=_build_attempt_details(self.provider_id, runtime_name, command, result),
             )
 
         lowered = text.lower()
@@ -157,8 +156,8 @@ class CommandClassificationProvider(ClassificationProvider):
             success=True,
             score=score,
             labels=[self.provider_id],
-            reason=f"Worker command path executed in {container_name}",
-            details=_build_attempt_details(self.provider_id, container_name, command, result),
+            reason=f"OpenCode command path executed in {runtime_name}",
+            details=_build_attempt_details(self.provider_id, runtime_name, command, result),
         )
 
 

@@ -12,7 +12,6 @@ def test_worker_exec_returns_stdout_on_zero_exit(monkeypatch) -> None:
     monkeypatch.setattr("services.shared.runtime.worker_exec.subprocess.run", _fake_run)
 
     result = exec_in_worker(
-        container_name="tg-dog-opencode-worker",
         command=["opencode", "--version"],
         timeout_seconds=30,
     )
@@ -30,7 +29,6 @@ def test_worker_exec_returns_structured_error_on_nonzero_exit(monkeypatch) -> No
     monkeypatch.setattr("services.shared.runtime.worker_exec.subprocess.run", _fake_run)
 
     result = exec_in_worker(
-        container_name="tg-dog-opencode-worker",
         command=["opencode", "run", "hello"],
         timeout_seconds=30,
     )
@@ -48,7 +46,6 @@ def test_worker_exec_marks_timeout_as_operational_error(monkeypatch) -> None:
     monkeypatch.setattr("services.shared.runtime.worker_exec.subprocess.run", _fake_run)
 
     result = exec_in_worker(
-        container_name="tg-dog-opencode-worker",
         command=["opencode", "run", "hello"],
         timeout_seconds=1,
     )
@@ -68,7 +65,6 @@ def test_worker_exec_passes_stdin_to_subprocess(monkeypatch) -> None:
     monkeypatch.setattr("services.shared.runtime.worker_exec.subprocess.run", _fake_run)
 
     result = exec_in_worker_with_input(
-        container_name="tg-dog-opencode-worker",
         command=["opencode", "run", "-m", "model"],
         timeout_seconds=30,
         stdin_text="hello from stdin",

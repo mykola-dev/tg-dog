@@ -25,12 +25,11 @@
 ## AI worker issues
 
 - `PROVIDER_AUTH_REQUIRED`: run worker login bootstrap again (`opencode providers login`).
-- OpenCode worker login command: `docker compose exec -it opencode-worker opencode providers login`
-- `Digest provider command failed`: the backend could not get a valid result from the worker command
-- `BOT_TOKEN_NOT_CONFIGURED`: set `TELEGRAM_BOT_TOKEN` in `.env`, then restart `api` and `app`.
+- OpenCode login command: `docker compose exec -it api opencode providers login`
+- `Digest provider command failed`: the backend could not get a valid result from the local OpenCode command
+- `BOT_TOKEN_NOT_CONFIGURED`: set `TELEGRAM_BOT_TOKEN` in `.env`, then restart `api`.
 - `BOT_DELIVERY_FAILED`: Telegram Bot API rejected the target. Common causes are missing bot membership or missing admin/post rights in the selected chat or channel.
-- Worker down: `docker compose up -d opencode-worker`.
-- Docker socket errors from worker execution: check `/var/run/docker.sock` mounts for `api` and `app` in `docker-compose.yml`.
+- If OpenCode CLI itself is missing or broken, rebuild `api`: `docker compose up -d --build api`.
 
 ## Legacy filtering/classification code
 

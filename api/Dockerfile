@@ -7,18 +7,15 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    curl \
+    nodejs \
+    npm \
     tesseract-ocr \
     tesseract-ocr-eng \
     tesseract-ocr-ukr \
     tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz" \
-    | tar -xz -C /tmp \
-    && mv /tmp/docker/docker /usr/local/bin/docker \
-    && chmod +x /usr/local/bin/docker \
-    && rm -rf /tmp/docker
+RUN npm install -g opencode-ai
 
 COPY requirements.txt /app/requirements.txt
 COPY api/requirements.txt /app/api/requirements.txt
