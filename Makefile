@@ -9,7 +9,7 @@ down:
 	docker compose down --remove-orphans
 
 restart:
-	docker compose restart
+	docker compose up -d --build --force-recreate --remove-orphans
 
 logs:
 	docker compose logs -f --tail=200
