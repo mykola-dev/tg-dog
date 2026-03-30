@@ -28,6 +28,56 @@ const DEFAULT_SYSTEM_PROMPT = [
     "- Close every formatting marker correctly.",
 ].join("\n");
 const DEFAULT_TITLE_TEMPLATE = '={{ "📰 ДАЙДЖЕСТ НОВИН ЗА " + $now.setLocale("uk").toFormat("d MMMM") }}';
+const LEGACY_NOW_EXPRESSION_RE = /\{\{\s*\$now(?:\.setLocale\((['"])(.*?)\1\))?\.toFormat\((['"])(.*?)\3\)\s*\}\}/g;
+
+function formatLegacyNowExpression(_match, _localeQuote, locale, _formatQuote, format) {
+    const formatValue = String(format || "").trim();
+    if (!formatValue) {
+        return _match;
+    }
+
+    const date = new Date();
+    const normalizedLocale = String(locale || "").trim() || undefined;
+    const formatter = new Intl.DateTimeFormat(normalizedLocale, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+    const parts = formatter.formatToParts(date);
+    const day = parts.find((part) => part.type === "day")?.value || String(date.getDate());
+    const month = parts.find((part) => part.type === "month")?.value || formatter.format(date);
+    const year = parts.find((part) => part.type === "year")?.value || String(date.getFullYear());
+
+    const tokens = formatValue.match(/yyyy|MMMM|d|[^yMd]+/g);
+    if (!tokens) {
+        return _match;
+    }
+    return tokens
+        .map((token) => {
+            if (token === "yyyy") {
+                return year;
+            }
+            if (token === "MMMM") {
+                return month;
+            }
+            if (token === "d") {
+                return day;
+            }
+            if (/[yMd]/.test(token)) {
+                return _match;
+            }
+            return token;
+        })
+        .join("");
+}
+
+function normalizeTitleTemplate(rawValue) {
+    const titleTemplate = String(rawValue || "").trim();
+    if (!titleTemplate || !titleTemplate.includes("{{$now")) {
+        return titleTemplate;
+    }
+    return titleTemplate.replace(LEGACY_NOW_EXPRESSION_RE, formatLegacyNowExpression);
+}
 
 async function createDigest(payload) {
     const response = await fetch(`${API_BASE_URL}/digest/messages`, {
@@ -118,7 +168,7 @@ class TelegramDigest {
         const systemPrompt = String(this.getNodeParameter("systemPrompt", 0));
         const outputFormat = String(this.getNodeParameter("outputFormat", 0));
         const includeTitle = Boolean(this.getNodeParameter("includeTitle", 0));
-        const titleTemplate = includeTitle ? String(this.getNodeParameter("titleTemplate", 0) || "") : "";
+        const titleTemplate = includeTitle ? normalizeTitleTemplate(this.getNodeParameter("titleTemplate", 0)) : "";
 
         const formattedText = items
             .map((item) => String((((item && item.json) || {}).formatted_text || ((item && item.json) || {}).combined_text || "")))
