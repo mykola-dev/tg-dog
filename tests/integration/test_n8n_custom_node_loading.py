@@ -18,7 +18,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 INTERNAL_N8N_URL = "http://n8n:5678"
 INTERNAL_API_URL = "http://api:8000"
-OWNER_EMAIL = "admin@example.com"
+OWNER_EMAIL = "owner@example.com"
+OWNER_PASSWORD = "BootstrapPassword123"
 CUSTOM_NODE_TYPE = "telegramSourceSelector"
 CUSTOM_NODE_FULL_TYPE = f"CUSTOM.{CUSTOM_NODE_TYPE}"
 CUSTOM_NODE_FOLDER = "telegram-source-selector"
@@ -89,7 +90,6 @@ def _base_env() -> dict[str, str]:
         "APP_TIMEZONE": "UTC",
         "WORKSPACE_PATH": "/workspace/run_artifacts",
         "TELEGRAM_SESSION_PATH": "/workspace/telegram_sessions",
-        "N8N_PASSWORD": "BootstrapPassword123",
         "N8N_PORT": str(_unused_tcp_port()),
         "API_PORT": str(_unused_tcp_port()),
         "COMPOSE_PROJECT_NAME": f"n8n-custom-node-{suffix}",
@@ -251,7 +251,57 @@ def _wait_for_health(env: dict[str, str], timeout_seconds: int = 120) -> None:
     raise AssertionError(last_error)
 
 
+def _ensure_owner_ready(env: dict[str, str], timeout_seconds: int = 120) -> None:
+    deadline = time.time() + timeout_seconds
+    last_error = "n8n owner setup never completed"
+    setup_requested = False
+
+    while time.time() < deadline:
+        status, body, _ = _internal_request(env, "/rest/settings")
+        if status != 200:
+            last_error = body if status == 0 else f"unexpected settings status {status}: {body}"
+            time.sleep(2)
+            continue
+
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError as exc:
+            last_error = str(exc)
+            time.sleep(2)
+            continue
+
+        show_setup = payload.get("data", {}).get("userManagement", {}).get("showSetupOnFirstLoad")
+        if show_setup is False:
+            return
+
+        if show_setup is True and not setup_requested:
+            setup_status, setup_body, _ = _internal_request(
+                env,
+                "/rest/owner/setup",
+                method="POST",
+                payload={
+                    "email": OWNER_EMAIL,
+                    "firstName": "Test",
+                    "lastName": "Owner",
+                    "password": OWNER_PASSWORD,
+                },
+            )
+            if setup_status in {200, 201}:
+                setup_requested = True
+                time.sleep(2)
+                continue
+            last_error = f"owner setup failed with {setup_status}: {setup_body}"
+            time.sleep(2)
+            continue
+
+        last_error = f"showSetupOnFirstLoad still {show_setup!r}"
+        time.sleep(2)
+
+    raise AssertionError(last_error)
+
+
 def _login(env: dict[str, str], timeout_seconds: int = 120) -> str:
+    _ensure_owner_ready(env, timeout_seconds=timeout_seconds)
     deadline = time.time() + timeout_seconds
     last_error = "n8n login never became ready"
 
@@ -260,7 +310,7 @@ def _login(env: dict[str, str], timeout_seconds: int = 120) -> str:
             env,
             "/rest/login",
             method="POST",
-            payload={"emailOrLdapLoginId": OWNER_EMAIL, "password": env["N8N_PASSWORD"]},
+            payload={"emailOrLdapLoginId": OWNER_EMAIL, "password": OWNER_PASSWORD},
         )
         if status == 200:
             if body == "n8n is starting up. Please wait":

@@ -31,7 +31,6 @@ def _env() -> dict[str, str]:
         "POSTGRES_USER": "telegram_digest",
         "POSTGRES_PASSWORD": "telegram_digest",
         "POSTGRES_PORT": "0",
-        "N8N_PASSWORD": "BootstrapPassword123",
         "N8N_PORT": "0",
         "APP_MASTER_KEY": "test_master_key_1234567890",
         "APP_TIMEZONE": "UTC",

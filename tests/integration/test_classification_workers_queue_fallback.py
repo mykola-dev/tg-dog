@@ -42,7 +42,7 @@ def test_queue_marks_output_degraded_when_only_worker_fails(monkeypatch, capsys,
     monkeypatch.setenv("WORKSPACE_PATH", str(workspace))
     monkeypatch.setenv("TELEGRAM_SESSION_PATH", str(sessions))
     monkeypatch.setenv("APP_TIMEZONE", "UTC")
-    monkeypatch.setenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker")
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "tg-dog")
 
     calls: list[str] = []
 
@@ -81,9 +81,9 @@ def test_queue_marks_output_degraded_when_only_worker_fails(monkeypatch, capsys,
     envelope = json.loads(capsys.readouterr().out)
     classification = json.loads((workspace / envelope["payload_ref"]).read_text(encoding="utf-8"))
 
-    assert calls == ["telegram-digest-opencode-worker"]
+    assert calls == ["tg-dog-opencode-worker"]
     assert classification["degraded"] is True
     assert classification["provider_kind"] == "none"
     assert len(classification["provider_attempts"]) == 1
     assert classification["provider_attempts"][0]["success"] is False
-    assert classification["provider_attempts"][0]["details"]["container_name"] == "telegram-digest-opencode-worker"
+    assert classification["provider_attempts"][0]["details"]["container_name"] == "tg-dog-opencode-worker"

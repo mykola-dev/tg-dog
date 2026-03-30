@@ -125,7 +125,6 @@ Important env vars:
 - `WEBHOOK_URL`
 - `TELEGRAM_BOT_WEBHOOK_BASE_URL`
 - `TELEGRAM_BOT_TOKEN`
-- `OPENCODE_CONTAINER_NAME`
 
 Important bridge endpoints:
 - `GET /dialogs`
@@ -150,7 +149,7 @@ Auth must stay real `Telethon`.
 
 Preserve:
 - interactive first run in `app`
-- detached fallback to `make onboard`
+- detached fallback to `make connect-telegram`
 - restart reuse of stored credentials
 - explicit disconnect/reset flow
 - no storage of login codes or 2FA secrets
@@ -226,7 +225,7 @@ Legacy heuristic/classification path:
 ## Worker Execution
 Core provider execution relies on:
 - Docker socket access in `app` and `api`
-- stable worker container naming via `OPENCODE_CONTAINER_NAME`
+- stable worker container naming through the compose project name plus `-opencode-worker`
 - persisted worker auth in `tg-dog_opencode_state`
 - timeout handling in `services/shared/runtime/worker_exec.py`
 
@@ -272,16 +271,15 @@ Important commands:
 - `make logs`
 - `make test`
 - `make migrate`
-- `make onboard`
-- `make disconnect`
+- `make connect-telegram`
+- `make reset-telegram`
+- `make reset-data`
 - `docker compose exec -it opencode-worker opencode providers login`
 
 Current runtime behavior:
 - `make up` runs `docker compose up -d --build --wait` and then starts interactive onboarding in `app`
-- first-time detached startup prints a hint to run `make onboard`
-- `n8n` bootstraps only the owner account
-- default owner email is `admin@example.com`
-- owner password comes from `N8N_PASSWORD`
+- first-time detached startup prints a hint to run `make connect-telegram`
+- `n8n` uses its standard first-run owner setup on a fresh data volume
 
 ## Security
 Treat the repo as containing real secrets and auth state.

@@ -12,7 +12,7 @@ def test_opencode_command_template_targets_minimax_model_by_default(monkeypatch)
         return WorkerExecResult(success=True, stdout="ok", stderr=None, exit_code=0, error_code=None)
 
     monkeypatch.setattr("services.shared.providers.classification.exec_in_worker", _fake_exec)
-    monkeypatch.setenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker")
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "tg-dog")
     monkeypatch.delenv("OPENCODE_COMMAND_TEMPLATE", raising=False)
 
     provider = CommandClassificationProvider("opencode_cli", {"provider_id": "opencode_cli"})
@@ -32,7 +32,7 @@ def test_opencode_command_template_can_be_overridden(monkeypatch) -> None:
         return WorkerExecResult(success=True, stdout="ok", stderr=None, exit_code=0, error_code=None)
 
     monkeypatch.setattr("services.shared.providers.classification.exec_in_worker", _fake_exec)
-    monkeypatch.setenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker")
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "tg-dog")
     monkeypatch.setenv("OPENCODE_COMMAND_TEMPLATE", "opencode run -m opencode/mimo-v2-pro-free \"{prompt}\"")
 
     provider = CommandClassificationProvider("opencode_cli", {"provider_id": "opencode_cli"})

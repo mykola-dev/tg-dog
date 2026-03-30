@@ -24,7 +24,7 @@ Current compose stack lives in `docker-compose.yml` and uses the compose project
 
 - `n8n`
   - stores workflows and executions in `tg-dog_n8n_data`
-  - bootstraps only the initial owner account
+  - uses the standard `n8n` first-run owner setup on a fresh data volume
   - loads local custom nodes from `./n8n/custom-nodes`
   - is the source of truth for user-created workflows
 
@@ -38,11 +38,13 @@ Current compose stack lives in `docker-compose.yml` and uses the compose project
 
 ## Persistent Volumes
 
-- `tg-dog_postgres_data`
-- `tg-dog_n8n_data`
-- `tg-dog_telegram_sessions`
-- `tg-dog_run_artifacts`
-- `tg-dog_opencode_state`
+- `<compose-project>_postgres_data`
+- `<compose-project>_n8n_data`
+- `<compose-project>_telegram_sessions`
+- `<compose-project>_run_artifacts`
+- `<compose-project>_opencode_state`
+
+With the default project name, these appear as `tg-dog_*` volumes.
 
 ## Real Integration Matrix
 

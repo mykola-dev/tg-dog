@@ -11,7 +11,6 @@ Replace the placeholder secrets before first boot.
 Set at least:
 
 - `POSTGRES_PASSWORD`
-- `N8N_PASSWORD`
 - `APP_MASTER_KEY`
 
 Optional:
@@ -24,23 +23,21 @@ Recommended for stable interactive onboarding:
 
 - `COMPOSE_MENU=false`
 
-Default bootstrap owner:
-
-- email: `admin@example.com`
-- password: `N8N_PASSWORD`
-
 ## 2) Start the stack
 
 ```bash
 make up
 ```
 
-`make up` runs `docker compose up -d --build --wait` and then attaches the onboarding flow inside `app`.
+`make up` runs `docker compose up -d --build --wait` and then attaches the Telegram onboarding flow inside `app`.
+
+Named Docker volumes are created automatically on first start.
 
 ## 3) Open n8n
 
 - URL: `http://localhost:50000`
-- Login: `admin@example.com` / `N8N_PASSWORD` from `.env`
+- On a fresh `n8n_data` volume, complete the standard `n8n` first-run owner setup in the browser.
+- On later restarts, log in with the owner email and password you created there.
 
 ## 4) Confirm the workspace is empty but ready
 
@@ -102,3 +99,13 @@ For the node-by-node walkthrough, see `docs/user/run-workflow-in-n8n.md`.
 - Do not commit `.env`, `telegram_sessions`, `run_artifacts`, or exported Docker volume data.
 - `app` and `api` are privileged runtime containers because they mount `/var/run/docker.sock`.
 - Telegram session state and worker auth are meant to stay in Docker volumes, not in tracked files.
+
+## Reset all data
+
+To wipe the full local stack state and start from scratch:
+
+```bash
+make reset-data
+```
+
+That removes containers plus all named Docker volumes for Postgres, `n8n`, Telegram sessions, run artifacts, and worker auth.

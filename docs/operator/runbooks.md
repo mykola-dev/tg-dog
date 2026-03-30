@@ -8,8 +8,9 @@
 - `make logs`
 - `make test`
 - `make migrate`
-- `make onboard`
-- `make disconnect`
+- `make connect-telegram`
+- `make reset-telegram`
+- `make reset-data`
 - `docker compose exec -it opencode-worker opencode providers login`
 
 ## First-Run Checks
@@ -20,16 +21,16 @@
 - `http://localhost:8000/health` should return `{"status":"ok"}`
 - open `http://localhost:50000`
 
-### Verify owner bootstrap
+### Verify n8n first-run setup
 
-- log in to `n8n` with `admin@example.com` and `N8N_PASSWORD`
-- if first-run setup appears instead of login, inspect `docker compose logs n8n`
+- on a fresh `n8n_data` volume, open `http://localhost:50000` and create the owner account in the `n8n` UI
+- on subsequent runs, log in with the owner account created in the UI
 
 ### Verify Telegram onboarding
 
 - on first `make up`, the app should start the interactive onboarding flow
-- if startup was detached, run `make onboard`
-- if auth was broken or stale, run `make disconnect` and onboard again
+- if startup was detached, run `make connect-telegram`
+- if auth was broken or stale, run `make reset-telegram` and connect again
 
 ## Bot Command Runtime
 
@@ -95,6 +96,11 @@ Current runtime truth:
 - active run is preserved when `active_run_id` is supplied
 
 Treat `run_artifacts` as sensitive data during cleanup and debugging.
+
+### Full local reset
+
+- `make reset-data` removes containers and all named Docker volumes for the local stack
+- use it when you need a true clean-room restart of Postgres, `n8n`, Telegram session state, run artifacts, and worker auth
 
 ## Security Boundaries
 

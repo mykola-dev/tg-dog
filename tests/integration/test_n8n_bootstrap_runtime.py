@@ -16,7 +16,8 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OWNER_EMAIL = "admin@example.com"
+OWNER_EMAIL = "owner@example.com"
+OWNER_PASSWORD = "BootstrapPassword123"
 CHANGED_PASSWORD = "ChangedPassword123"
 USER_WORKFLOW_NAME = "user-persisted-workflow"
 INTERNAL_N8N_URL = "http://n8n:5678"
@@ -54,7 +55,6 @@ def _base_env() -> dict[str, str]:
         "APP_TIMEZONE": "UTC",
         "WORKSPACE_PATH": "/workspace/run_artifacts",
         "TELEGRAM_SESSION_PATH": "/workspace/telegram_sessions",
-        "N8N_PASSWORD": "BootstrapPassword123",
         "N8N_PORT": str(n8n_port),
         "API_PORT": str(api_port),
         "WEB_PORT": str(web_port),
@@ -195,9 +195,10 @@ def _wait_for_health(env: dict[str, str], timeout_seconds: int = 120) -> None:
     raise AssertionError(last_error)
 
 
-def _wait_for_bootstrap_ready(env: dict[str, str], timeout_seconds: int = 120) -> dict[str, object]:
+def _ensure_owner_ready(env: dict[str, str], timeout_seconds: int = 120) -> dict[str, object]:
     deadline = time.time() + timeout_seconds
-    last_error = "n8n bootstrap never completed"
+    last_error = "n8n owner setup never completed"
+    setup_requested = False
 
     while time.time() < deadline:
         status, body, _ = _internal_request(env, "GET", "/rest/settings")
@@ -213,19 +214,43 @@ def _wait_for_bootstrap_ready(env: dict[str, str], timeout_seconds: int = 120) -
             time.sleep(2)
             continue
 
-        if isinstance(payload, dict):
-            show_setup = payload.get("data", {}).get("userManagement", {}).get("showSetupOnFirstLoad")
-            if show_setup is False:
-                return payload
-            last_error = f"showSetupOnFirstLoad still {show_setup!r}"
-        else:
+        if not isinstance(payload, dict):
             last_error = f"unexpected settings payload type: {type(payload).__name__}"
+            time.sleep(2)
+            continue
+
+        show_setup = payload.get("data", {}).get("userManagement", {}).get("showSetupOnFirstLoad")
+        if show_setup is False:
+            return payload
+
+        if show_setup is True and not setup_requested:
+            setup_status, setup_body, _ = _internal_request(
+                env,
+                "POST",
+                "/rest/owner/setup",
+                payload={
+                    "email": OWNER_EMAIL,
+                    "firstName": "Test",
+                    "lastName": "Owner",
+                    "password": OWNER_PASSWORD,
+                },
+            )
+            if setup_status in {200, 201}:
+                setup_requested = True
+                time.sleep(2)
+                continue
+            last_error = f"owner setup failed with {setup_status}: {setup_body}"
+            time.sleep(2)
+            continue
+
+        last_error = f"showSetupOnFirstLoad still {show_setup!r}"
         time.sleep(2)
 
     raise AssertionError(last_error)
 
 
 def _login(env: dict[str, str], password: str) -> str:
+    _ensure_owner_ready(env)
     deadline = time.time() + 120
     last_error = "login endpoint never became ready"
 
@@ -344,10 +369,10 @@ def test_n8n_bootstrap_runtime_reseeds_owner_and_preserves_user_workflow() -> No
     try:
         _wait_for_health(env)
 
-        settings = _wait_for_bootstrap_ready(env)
+        settings = _ensure_owner_ready(env)
         assert settings["data"]["userManagement"]["showSetupOnFirstLoad"] is False
 
-        auth_cookie = _login(env, env["N8N_PASSWORD"])
+        auth_cookie = _login(env, OWNER_PASSWORD)
         created_workflow = _create_persisted_workflow(env, auth_cookie)
         workflow_id = str(created_workflow["id"])
         workflow_before_restart = _workflow_details(env, auth_cookie, workflow_id)
@@ -363,7 +388,7 @@ def test_n8n_bootstrap_runtime_reseeds_owner_and_preserves_user_workflow() -> No
             "PATCH",
             "/rest/me/password",
             payload={
-                "currentPassword": env["N8N_PASSWORD"],
+                "currentPassword": OWNER_PASSWORD,
                 "newPassword": CHANGED_PASSWORD,
             },
             cookie_header=auth_cookie,

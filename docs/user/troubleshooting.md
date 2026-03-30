@@ -5,9 +5,10 @@
 - `AUTH_CONFIG_ERROR`: verify `APP_MASTER_KEY` is set.
 - `AUTH_FLOW_EXPIRED`: restart login flow and re-enter code.
 - `reauth_required`: reconnect account using onboarding workflow.
-- n8n login uses `admin@example.com` and `N8N_PASSWORD` from `.env`.
-- If n8n shows first-run setup instead of login, restart `n8n` so its in-container bootstrap runs again: `docker compose up -d --build n8n`.
-- If the owner bootstrap fails, check `docker compose logs n8n` for the exact validation error.
+- If Telegram onboarding was skipped on detached startup, run `make connect-telegram`.
+- If you need to clear the stored Telegram session and reconnect, run `make reset-telegram`.
+- On a fresh `n8n_data` volume, `n8n` should show its standard first-run owner setup in the browser.
+- If `n8n` does not load correctly after rebuild or restart, inspect `docker compose logs n8n`.
 
 ## Workflow issues
 

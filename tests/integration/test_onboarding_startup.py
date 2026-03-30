@@ -91,4 +91,4 @@ def test_startup_prints_advice_when_no_tty_and_disconnected(tmp_path: Path, caps
 
     assert result is False
     output = capsys.readouterr().out
-    assert "make onboard" in output
+    assert "make connect-telegram" in output

@@ -147,7 +147,7 @@ def run_wizard(session_path: Path, *, reason: str = "No connected Telegram accou
 
 
 def main() -> None:
-    """Entry point for `make onboard` / `python -m services.onboarding.wizard`."""
+    """Entry point for `make connect-telegram` / `python -m services.onboarding.wizard`."""
     config = load_config(require_master_key=True)
     success = run_wizard(session_path=config.telegram_session_path)
     sys.exit(0 if success else 1)

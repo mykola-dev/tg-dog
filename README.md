@@ -43,7 +43,6 @@ Then replace the placeholder secrets.
 At minimum, set these:
 
 - `POSTGRES_PASSWORD`
-- `N8N_PASSWORD`
 - `APP_MASTER_KEY`
 
 If you also want bot commands or bot delivery, add:
@@ -62,11 +61,13 @@ make up
 
 That boots the Docker stack and handles first-time onboarding when needed.
 
+Named Docker volumes are created automatically on first boot.
+
 ### 3. Open `n8n`
 
 - URL: `http://localhost:50000`
-- Login: `admin@example.com`
-- Password: `N8N_PASSWORD` from `.env`
+- On a fresh install, complete the standard `n8n` owner setup in the browser.
+- On later runs, log in with the owner email and password you created there.
 
 ### 4. Connect your Telegram account
 
@@ -81,7 +82,7 @@ On the first run, TG-Dog asks for:
 If you started everything in detached mode and skipped the wizard by accident, just run:
 
 ```bash
-make onboard
+make connect-telegram
 ```
 
 ### 5. Log in the AI worker once
@@ -215,8 +216,9 @@ make up
 make down
 make restart
 make logs
-make onboard
-make disconnect
+make connect-telegram
+make reset-telegram
+make reset-data
 make test
 make migrate
 docker compose exec -it opencode-worker opencode providers login

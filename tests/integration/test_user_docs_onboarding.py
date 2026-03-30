@@ -69,15 +69,15 @@ def test_connect_account_doc_explains_reuse_and_re_setup() -> None:
     text = _text("docs/user/connect-account.md")
     assert "Subsequent runs" in text
     assert "Skipping setup" in text
-    assert "make onboard" in text
-    assert "make disconnect" in text
+    assert "make connect-telegram" in text
+    assert "make reset-telegram" in text
 
 
 def test_connect_account_doc_covers_detached_mode() -> None:
     text = _text("docs/user/connect-account.md")
     assert "Detached mode" in text or "detached" in text
     assert "docker compose up -d" in text
-    assert "make onboard" in text
+    assert "make connect-telegram" in text
 
 
 def test_connect_account_doc_lists_common_errors() -> None:

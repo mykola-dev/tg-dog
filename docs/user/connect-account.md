@@ -43,23 +43,23 @@ If you run `docker compose up -d` on first run, the container cannot prompt inte
 
 ```
 No connected Telegram account found.
-Run 'make onboard' to complete setup.
+Run 'make connect-telegram' to complete setup.
 ```
 
-Then run `make onboard` to start the wizard manually.
+Then run `make connect-telegram` to start the wizard manually.
 
 ## Re-setup
 
 To re-run the wizard at any time:
 
 ```
-make onboard
+make connect-telegram
 ```
 
 To disconnect and clear credentials:
 
 ```
-make disconnect
+make reset-telegram
 ```
 
 The next startup will trigger the wizard again.

@@ -12,14 +12,14 @@ def test_opencode_provider_executes_in_opencode_worker(monkeypatch) -> None:
         return WorkerExecResult(success=True, stdout='{"score":35}', stderr=None, exit_code=0, error_code=None)
 
     monkeypatch.setattr("services.shared.providers.classification.exec_in_worker", _fake_exec)
-    monkeypatch.setenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker")
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "tg-dog")
 
     provider = CommandClassificationProvider("opencode_cli", {"provider_id": "opencode_cli"})
     response = provider.classify_text("normal update")
 
     assert response.success is True
     assert response.score == 35.0
-    assert calls[0][0] == "telegram-digest-opencode-worker"
+    assert calls[0][0] == "tg-dog-opencode-worker"
     assert calls[0][2] == 45
 
 
@@ -34,7 +34,7 @@ def test_auth_failure_normalizes_to_provider_auth_required(monkeypatch) -> None:
         )
 
     monkeypatch.setattr("services.shared.providers.classification.exec_in_worker", _fake_exec)
-    monkeypatch.setenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker")
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "tg-dog")
 
     provider = CommandClassificationProvider("opencode_cli", {"provider_id": "opencode_cli"})
     response = provider.classify_text("urgent incident")

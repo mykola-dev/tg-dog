@@ -4,6 +4,7 @@ import os
 import shlex
 from dataclasses import dataclass
 
+from services.shared.runtime.opencode import opencode_container_name
 from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker, exec_in_worker_with_input
 
 
@@ -18,7 +19,7 @@ class DigestProviderResponse:
 def _provider_from_command(command_template: str) -> tuple[str, str]:
     return (
         "opencode_cli",
-        os.getenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker"),
+        opencode_container_name(),
     )
 
 

@@ -36,7 +36,6 @@ def _base_env() -> dict[str, str]:
         "APP_TIMEZONE": "UTC",
         "WORKSPACE_PATH": "/workspace/run_artifacts",
         "TELEGRAM_SESSION_PATH": "/workspace/telegram_sessions",
-        "N8N_PASSWORD": "BootstrapPassword123",
         "N8N_PORT": "0",
         "API_PORT": "0",
         "WEB_PORT": "0",

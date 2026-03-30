@@ -40,7 +40,7 @@ def check_and_onboard() -> bool:
 
     if not _is_tty():
         print(reason)
-        print("Run 'make onboard' to complete setup.")
+        print("Run 'make connect-telegram' to complete setup.")
         return False
 
     return run_wizard(session_path=session_path, reason=reason)

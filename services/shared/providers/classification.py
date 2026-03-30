@@ -4,6 +4,7 @@ import os
 import shlex
 from dataclasses import dataclass
 
+from services.shared.runtime.opencode import opencode_container_name
 from services.shared.runtime.worker_exec import WorkerExecResult, exec_in_worker
 
 
@@ -75,7 +76,7 @@ def _provider_preset(provider_id: str) -> dict[str, str] | None:
     presets: dict[str, dict[str, str]] = {
         "opencode_cli": {
             "display_name": "OpenCode CLI",
-            "container_name": os.getenv("OPENCODE_CONTAINER_NAME", "telegram-digest-opencode-worker"),
+            "container_name": opencode_container_name(),
             "command_template": os.getenv(
                 "OPENCODE_COMMAND_TEMPLATE",
                 "opencode run -m opencode/minimax-m2.5-free \"{prompt}\"",

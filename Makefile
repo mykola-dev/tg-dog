@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart logs test migrate manifest onboard disconnect
+.PHONY: up down restart logs test migrate connect-telegram reset-telegram reset-data
 
 up:
 	docker compose up -d --build --wait && docker compose exec -it app python -m services.onboarding.ensure_connected
@@ -20,11 +20,11 @@ test:
 migrate:
 	docker compose run --rm app python -m services.shared.db.migrations.apply
 
-manifest:
-	docker compose run --rm app python -m services.shared.runtime.manifest --run-id demo-run --trigger-type manual
-
-onboard:
+connect-telegram:
 	docker compose exec -it app python -m services.onboarding.wizard
 
-disconnect:
+reset-telegram:
 	docker compose exec app python -m services.auth.main disconnect --run-id manual
+
+reset-data:
+	docker compose down -v --remove-orphans

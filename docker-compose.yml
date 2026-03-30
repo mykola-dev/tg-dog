@@ -35,7 +35,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      OPENCODE_CONTAINER_NAME: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
     volumes:
       - telegram_sessions:/workspace/telegram_sessions
       - run_artifacts:/workspace/run_artifacts
@@ -64,7 +63,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      OPENCODE_CONTAINER_NAME: ${COMPOSE_PROJECT_NAME:-tg-dog}-opencode-worker
     volumes:
       - telegram_sessions:/workspace/telegram_sessions
       - run_artifacts:/workspace/run_artifacts
@@ -109,17 +107,11 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       GENERIC_TIMEZONE: ${APP_TIMEZONE:-UTC}
       TZ: ${APP_TIMEZONE:-UTC}
-      N8N_BOOTSTRAP_OWNER_EMAIL: admin@example.com
-      N8N_BOOTSTRAP_OWNER_FIRST_NAME: Admin
-      N8N_BOOTSTRAP_OWNER_LAST_NAME: User
-      N8N_BOOTSTRAP_OWNER_PASSWORD: ${N8N_PASSWORD}
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./docker/n8n:/bootstrap:ro
       - ./n8n/custom-nodes:/custom-extensions:ro
     ports:
       - "${N8N_PORT:-50000}:5678"
-    command: ["/bin/sh", "/bootstrap/bootstrap.sh"]
 
   opencode-worker:
     build:
@@ -138,17 +130,7 @@ services:
 
 volumes:
   postgres_data:
-    external: true
-    name: tg-dog_postgres_data
   telegram_sessions:
-    external: true
-    name: tg-dog_telegram_sessions
   run_artifacts:
-    external: true
-    name: tg-dog_run_artifacts
   opencode_state:
-    external: true
-    name: tg-dog_opencode_state
   n8n_data:
-    external: true
-    name: tg-dog_n8n_data
