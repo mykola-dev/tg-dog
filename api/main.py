@@ -12,8 +12,7 @@ from api.routers import ocr as ocr_router
 from api.routers import post_message as post_message_router
 from api.routers import telegram_bot_commands as telegram_bot_commands_router
 from api.routers import telegram_trigger as telegram_trigger_router
-from api.routers import cleanup as cleanup_router
-from api.routers import digest_llm as digest_llm_router
+from api.routers import ai_text as ai_text_router
 from api.telegram_bot_command_runtime import telegram_bot_command_runtime
 from api.telegram_trigger_runtime import telegram_trigger_runtime
 
@@ -58,8 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(dialogs_router.router)
     app.include_router(messages_router.router)
-    app.include_router(cleanup_router.router)
-    app.include_router(digest_llm_router.router)
+    app.include_router(ai_text_router.router)
     app.include_router(n8n_bridge_router.router)
     app.include_router(ocr_router.router)
     app.include_router(post_message_router.router)

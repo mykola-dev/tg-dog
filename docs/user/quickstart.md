@@ -55,13 +55,13 @@ Follow these in order:
 
 ## 6) Run first digest
 
-Before using `TG Dog Digest`, log in inside the API container:
+Before using the AI text step, log in inside the API container:
 
 ```bash
 make login-opencode
 ```
 
-That local OpenCode runtime inside `api` is the current AI text-processing path used by `TG Dog Digest`.
+That local OpenCode runtime inside `api` is the current AI text-processing path used by the built-in `HTTP Request -> /ai/text` flow.
 
 Then build the first workflow.
 
@@ -72,15 +72,19 @@ Simple path:
 1. Create a workflow in `n8n`.
 2. Add `Manual Trigger`.
 3. Add `TG Dog Source Selector`.
-4. Add `TG Dog Message Reader`.
-5. Optionally add `TG Dog OCR`.
-6. Add `TG Dog Messages Cleanup`.
-7. Add `TG Dog Digest` and/or `TG Dog Post Message`.
+4. Add built-in `HTTP Request` to `POST http://api:8000/messages/read`.
+5. Send JSON with `dialog_ids`, `lookback_hours`, and `include_media`.
+6. Optionally add built-in `HTTP Request` to `POST http://api:8000/ocr/messages`.
+7. If you want one OCR request for many message items, aggregate them first with built-in `Item Lists`.
+8. Use built-in `Code` or other standard transform nodes to prepare text.
+9. Add built-in `HTTP Request` to `POST http://api:8000/ai/text` for the AI step.
+10. Add built-in `Code` if you need HTML chunking or delivery shaping.
+11. Add `TG Dog Post Message` for delivery.
 
 Useful variations:
 
-- turn off `TG Dog Message Reader -> Include Media` for faster text-only reads
-- use `TG Dog Random Message` if you want one random real message from a selected dialog
+- set `include_media = false` in the read request for faster text-only reads
+- use `TG Dog Source Selector -> IF -> HTTP Request /messages/random` if you want one random real message from a selected dialog
 - use `TG Dog Message Trigger` for realtime user-account message workflows
 - use `TG Dog Bot Command Trigger` if you want a bot command like `/run` to start the workflow
 
@@ -94,6 +98,7 @@ Useful variations:
 - return control to `.env` with `POST /telegram-bot-commands/config` and `{ "use_env": true }`
 
 For the node-by-node walkthrough, see `docs/user/run-workflow-in-n8n.md`.
+For HTTP node details and payload-shaping guidance, see `docs/user/run-workflow-in-n8n.md`.
 
 ## Security notes
 

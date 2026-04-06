@@ -32,7 +32,7 @@ def test_bot_client_sends_plain_text_message() -> None:
     )
 
 
-def test_bot_client_sends_markdown_v2_message() -> None:
+def test_bot_client_sends_html_message() -> None:
     client = TelegramBotClient("123:test-token")
 
     response = MagicMock()
@@ -41,15 +41,15 @@ def test_bot_client_sends_markdown_v2_message() -> None:
     response.json.return_value = {
         "ok": True,
         "result": {
-            "message_id": 77,
+            "message_id": 78,
             "chat": {"id": -100123},
         },
     }
 
     with patch("services.shared.telegram.bot_client.httpx.post", return_value=response) as mocked_post:
-        client.send_text_chunk(target_id="-100123", chunk_text="*Hello*", parse_mode="markdown_v2")
+        client.send_text_chunk(target_id="-100123", chunk_text="<b>Hello</b>", parse_mode="html")
 
-    assert mocked_post.call_args.kwargs["json"]["parse_mode"] == "MarkdownV2"
+    assert mocked_post.call_args.kwargs["json"]["parse_mode"] == "HTML"
 
 
 def test_bot_client_surfaces_bot_api_error_description() -> None:

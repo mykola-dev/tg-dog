@@ -37,7 +37,7 @@ except Exception:  # pragma: no cover
     SlowModeWaitError = None
 
 from services.shared.telegram.errors import TelegramAuthError, TelegramDeliveryError, TelegramOperationalError
-from services.shared.telegram.markdown_v2 import MARKDOWN_V2_PARSE_MODE
+from services.shared.telegram.markdown_v2 import HTML_PARSE_MODE
 
 DELIVERY_MODES = {"auto", "send", "forward", "copy"}
 
@@ -624,14 +624,8 @@ class TelegramClientWrapper:
 
             send_kwargs: dict[str, Any] = {}
             message_payload = chunk_text
-            if parse_mode == MARKDOWN_V2_PARSE_MODE:
-                raise TelegramDeliveryError(
-                    code="POST_MARKDOWN_V2_BOT_ONLY",
-                    message="MarkdownV2 delivery is currently supported only for bot sender mode",
-                    retryable=False,
-                )
-            if parse_mode == "markdown":
-                send_kwargs["parse_mode"] = "md"
+            if parse_mode == HTML_PARSE_MODE:
+                send_kwargs["parse_mode"] = "html"
 
             if media_file_ref:
                 force_document = media_kind not in {"image", "gif"}

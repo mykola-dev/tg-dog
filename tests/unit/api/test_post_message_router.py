@@ -22,10 +22,29 @@ def test_post_message_router_returns_sent_receipt(stateless_api_client):
     )
 
 
+def test_post_message_router_accepts_html_for_user_mode(stateless_api_client):
+    with patch("api.routers.post_message.TelegramClientWrapper") as MockWrapper:
+        instance = MagicMock()
+        instance.send_text_chunk.return_value = {"chat_id": "123", "message_id": "456"}
+        MockWrapper.return_value = instance
+
+        resp = stateless_api_client.post(
+            "/post/message",
+            json={"sender_mode": "user", "target_id": "self", "text": "<b>Hello</b>", "parse_mode": "html"},
+        )
+
+    assert resp.status_code == 200
+    instance.send_text_chunk.assert_called_once_with(
+        target_id="self",
+        chunk_text="<b>Hello</b>",
+        parse_mode="html",
+    )
+
+
 def test_post_message_router_rejects_unknown_parse_mode(stateless_api_client):
     resp = stateless_api_client.post(
         "/post/message",
-        json={"sender_mode": "user", "target_id": "self", "text": "Hello", "parse_mode": "html"},
+        json={"sender_mode": "user", "target_id": "self", "text": "Hello", "parse_mode": "bbcode"},
     )
 
     assert resp.status_code == 400
@@ -94,14 +113,35 @@ def test_post_message_router_uses_bot_client_for_bot_mode(stateless_api_client, 
     MockBotClient.assert_called_once_with("123:test-token")
 
 
-def test_post_message_router_rejects_markdown_v2_for_user_mode(stateless_api_client):
+def test_post_message_router_rejects_markdown_v2_alias(stateless_api_client):
     resp = stateless_api_client.post(
         "/post/message",
         json={"sender_mode": "user", "target_id": "self", "text": "Hello", "parse_mode": "markdown_v2"},
     )
 
     assert resp.status_code == 400
-    assert resp.json()["code"] == "POST_MARKDOWN_V2_BOT_ONLY"
+    assert resp.json()["code"] == "POST_PARSE_MODE_UNSUPPORTED"
+
+
+def test_post_message_router_accepts_html_for_bot_mode(stateless_api_client, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:test-token")
+
+    with patch("api.routers.post_message.TelegramBotClient") as MockBotClient:
+        instance = MagicMock()
+        instance.send_text_chunk.return_value = {"chat_id": "-100123", "message_id": "999"}
+        MockBotClient.return_value = instance
+
+        resp = stateless_api_client.post(
+            "/post/message",
+            json={"sender_mode": "bot", "target_id": "-100123", "text": "<b>Hello from bot</b>", "parse_mode": "html"},
+        )
+
+    assert resp.status_code == 200
+    instance.send_text_chunk.assert_called_once_with(
+        target_id="-100123",
+        chunk_text="<b>Hello from bot</b>",
+        parse_mode="html",
+    )
 
 
 def test_post_message_router_reports_missing_bot_token(stateless_api_client, monkeypatch):

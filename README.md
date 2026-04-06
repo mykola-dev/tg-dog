@@ -92,7 +92,7 @@ make connect-telegram
 make login-opencode
 ```
 
-Right now the local OpenCode runtime inside `api` powers the main AI text step. Summaries are one use case, but rewrites, extraction, classification, comments, and other text tasks fit the same path too.
+Right now the local OpenCode runtime inside `api` powers the main AI text step through the API. Summaries are one use case, but rewrites, extraction, classification, comments, and other text tasks fit the same path too.
 
 ## 📲 Telegram Setup
 
@@ -131,10 +131,11 @@ The easiest first flow looks like this:
 2. Add a trigger.
 3. Pick Telegram chats as sources.
 4. Read messages.
-5. Optionally run OCR on images.
-6. Clean the text.
-7. Run your AI step.
-8. Post the result back to Telegram.
+5. Optionally run OCR on images through a built-in `HTTP Request` to the API.
+6. Clean or reshape the text with standard `n8n` nodes.
+7. Run your AI step through a built-in `HTTP Request` to the API.
+8. Shape or split the result with built-in workflow logic when needed.
+9. Post the result back to Telegram.
 
 You do not need to memorize every custom node on day one.
 

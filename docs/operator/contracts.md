@@ -50,45 +50,24 @@ Current runtime truth:
 - supported GIF-style media can flow through random read and repost paths
 - non-image OCR is not implemented
 
-## Cleanup Contract
-
-`POST /messages/cleanup` returns:
-- `mode`
-- `output_format`
-- `message_count`
-- `combined_text`
-- `formatted_messages`
-
-This is the formatting boundary between canonical Telegram items and text-oriented downstream steps.
-
 ## AI Text Contract
 
-`POST /digest/messages` accepts:
-- `formatted_text`
-- `command_template`
+`POST /ai/text` accepts:
+- `prompt`
 - `system_prompt`
-- `output_format`
-- `title_text` (optional)
+- `command_template`
 
-`POST /digest/messages` returns:
-- `digest_text`
-- `format`
-- `parse_mode`
-- `delivery_chunks`
+`POST /ai/text` returns:
+- `output_text`
 - `provider_id`
 - `provider_attempts`
-- `message_count`
-- `source_count`
 - `raw_output`
 
-Despite the node name `TG Dog Digest`, this is the current general worker-backed AI text-processing response shape.
-
 Important behavior:
-- output can be plain text or `markdown_v2`
-- delivery shaping happens here
-- when `title_text` is set, the digest title is prepended in bold for `markdown_v2`
-- multi-part digests add `(частина N/total)` to each chunk title automatically
-- `delivery_chunks` are already split for downstream Telegram delivery
+- the AI endpoint executes the local OpenCode CLI through `api`
+- prompt content still goes to the worker on stdin
+- Telegram delivery shaping is no longer part of this endpoint contract
+- chunking and delivery-ready shaping belong in workflow logic before `POST /post/message`
 
 ## Trigger Contracts
 

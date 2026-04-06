@@ -197,7 +197,7 @@ class PostMessage {
                     noDataExpression: true,
                     options: [
                         { name: "Plain Text", value: "plain_text" },
-                        { name: "MarkdownV2", value: "markdown_v2" },
+                        { name: "HTML", value: "html" },
                     ],
                 },
             ],

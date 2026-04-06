@@ -14,6 +14,6 @@ def test_n8n_bridge_probe_returns_explicit_contract() -> None:
     assert set(data) == {"ok", "bridge", "service", "timestamp"}
     assert data["ok"] is True
     assert data["bridge"] == "n8n"
-    assert data["service"] == "telegram-digest-api"
+    assert data["service"] == "tg-dog-api"
     assert isinstance(data["timestamp"], str)
     assert datetime.fromisoformat(data["timestamp"])

@@ -20,7 +20,7 @@ class BridgeProbeResponse(BaseModel):
 def bridge_probe() -> dict[str, object]:
     return {
         "ok": True,
-        "service": "telegram-digest-api",
+        "service": "tg-dog-api",
         "bridge": "n8n",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

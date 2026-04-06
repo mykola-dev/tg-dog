@@ -196,7 +196,7 @@ def _wait_for_bridge_probe(env: dict[str, str], timeout_seconds: int = 120) -> d
             payload = json.loads(body)
             assert payload["ok"] is True
             assert payload["bridge"] == "n8n"
-            assert payload["service"] == "telegram-digest-api"
+            assert payload["service"] == "tg-dog-api"
             return payload
         last_error = body if status == 0 else f"unexpected bridge status {status}: {body}"
         time.sleep(2)

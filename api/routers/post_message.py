@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from api.schemas import PostMessageRequest, PostMessageResponse
 from services.shared.config import load_config
 from services.shared.telegram.markdown_v2 import (
-    MARKDOWN_V2_PARSE_MODE,
+    HTML_PARSE_MODE,
     PLAIN_TEXT_PARSE_MODE,
     normalize_parse_mode,
     split_plain_text_chunks,
@@ -45,16 +45,8 @@ def post_message(payload: PostMessageRequest):
         return JSONResponse(status_code=400, content={"error": "Unsupported sender mode", "code": "POST_SENDER_MODE_UNSUPPORTED"})
     if payload.delivery_mode not in SUPPORTED_DELIVERY_MODES:
         return JSONResponse(status_code=400, content={"error": "Unsupported delivery mode", "code": "POST_DELIVERY_MODE_UNSUPPORTED"})
-    if parse_mode not in {PLAIN_TEXT_PARSE_MODE, MARKDOWN_V2_PARSE_MODE}:
+    if parse_mode not in {PLAIN_TEXT_PARSE_MODE, HTML_PARSE_MODE}:
         return JSONResponse(status_code=400, content={"error": "Unsupported parse mode", "code": "POST_PARSE_MODE_UNSUPPORTED"})
-    if payload.sender_mode == "user" and parse_mode == MARKDOWN_V2_PARSE_MODE:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "MarkdownV2 delivery is currently supported only for bot sender mode",
-                "code": "POST_MARKDOWN_V2_BOT_ONLY",
-            },
-        )
 
     chunks = [chunk.strip() for chunk in payload.delivery_chunks if isinstance(chunk, str) and chunk.strip()]
     if not chunks and payload.text.strip():

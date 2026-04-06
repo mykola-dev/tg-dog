@@ -49,8 +49,8 @@ class TelegramBotClient:
             "chat_id": target_id,
             "text": chunk_text,
         }
-        if parse_mode == "markdown_v2":
-            payload["parse_mode"] = "MarkdownV2"
+        if parse_mode == "html":
+            payload["parse_mode"] = "HTML"
 
         try:
             response = httpx.post(self._api_url("sendMessage"), json=payload, timeout=30)
@@ -86,8 +86,8 @@ class TelegramBotClient:
         }
         if caption_text:
             payload["caption"] = caption_text
-        if parse_mode == "markdown_v2":
-            payload["parse_mode"] = "MarkdownV2"
+        if parse_mode == "html":
+            payload["parse_mode"] = "HTML"
 
         endpoint = "sendDocument"
         file_name = Path(media_file_ref).name or "attachment.bin"

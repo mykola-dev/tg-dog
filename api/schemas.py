@@ -130,57 +130,10 @@ class MessageOCREnrichRequest(BaseModel):
     messages: list[CanonicalMessageItem] = Field(default_factory=list)
 
 
-class CleanupRequest(BaseModel):
-    messages: list[CanonicalMessageItem] = Field(default_factory=list)
-    mode: str = Field(default="combined")
-    output_format: str = Field(default="markdown")
-    include_source_title: bool = True
-    include_timestamp: bool = True
-    include_ocr_text: bool = True
-    max_characters_per_message: int = Field(default=1200, ge=80, le=10000)
-
-
-class FormattedMessageItem(BaseModel):
-    source_id: str
-    message_id: str
-    formatted_text: str
-
-
-class CleanupResponse(BaseModel):
-    mode: str
-    output_format: str
-    message_count: int
-    combined_text: str | None = None
-    formatted_messages: list[FormattedMessageItem] = Field(default_factory=list)
-
-
-class DigestRequest(BaseModel):
-    formatted_text: str = ""
+class AITextRequest(BaseModel):
+    prompt: str = Field(min_length=1)
     command_template: str = Field(default='opencode run -m opencode/minimax-m2.5-free "{prompt}"')
-    system_prompt: str = Field(
-        default=(
-            "Create a compact Telegram digest from the provided messages.\n"
-            "Group related updates by topic.\n"
-            "Prioritize important developments.\n"
-            "Avoid repetition.\n"
-            "Preserve concrete facts, names, numbers, and links when present.\n"
-            "Return Telegram-safe MarkdownV2 only.\n"
-            "Formatting rules:\n"
-            "- Use *bold* for section titles and important labels (single asterisk on each side).\n"
-            "- Use _italic_ only for short source lists or light emphasis (single underscore on each side).\n"
-            "- __underline__ means underline in MarkdownV2, not italic.\n"
-            "- Use [text](url) for links and `code` only for literals.\n"
-            "- Use simple bullet lists with '- '.\n"
-            "- Do not use Markdown headings like # or ##.\n"
-            "- Do not use HTML.\n"
-            "- Do not use tables.\n"
-            "- Do not use horizontal rules like ---.\n"
-            "- Never use **bold** or __italic__ syntax.\n"
-            "- Close every formatting marker correctly."
-        )
-    )
-    output_format: str = Field(default="markdown_v2")
-    title_text: str = Field(default="", max_length=500)
+    system_prompt: str = Field(default="")
 
 
 class ProviderAttemptSchema(BaseModel):
@@ -189,15 +142,10 @@ class ProviderAttemptSchema(BaseModel):
     details: dict[str, Any] | str | None = None
 
 
-class DigestResponse(BaseModel):
-    digest_text: str
-    format: str
-    parse_mode: str
-    delivery_chunks: list[str] = Field(default_factory=list)
+class AITextResponse(BaseModel):
+    output_text: str
     provider_id: str
     provider_attempts: list[ProviderAttemptSchema] = Field(default_factory=list)
-    message_count: int
-    source_count: int
     raw_output: str | None = None
 
 

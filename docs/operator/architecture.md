@@ -45,19 +45,14 @@ With the default project name, these appear as `tg-dog_*` volumes.
 - Telegram bot-command ingress -> real -> Bot API webhook or polling in `api/telegram_bot_command_runtime.py`
 - Bot-mode delivery -> real -> Telegram Bot API via `services/shared/telegram/bot_client.py`
 - OCR -> real local | placeholder remote -> only local `tesseract` path is implemented
-- AI text step -> real -> `api/routers/digest_llm.py` runs local OpenCode CLI inside `api`
+- AI text step -> real -> `api/routers/ai_text.py` runs local OpenCode CLI inside `api`
 - heuristic / classification path -> legacy or secondary -> code exists under `services/`, but it is not the main current `n8n` UX
 
 ## Custom Nodes In Current Runtime
 
 - `TG Dog Source Selector`
-- `TG Dog Message Reader`
 - `TG Dog Message Trigger`
 - `TG Dog Bot Command Trigger`
-- `TG Dog Random Message`
-- `TG Dog OCR`
-- `TG Dog Messages Cleanup`
-- `TG Dog Digest`
 - `TG Dog Post Message`
 
 ## Workflow Ownership

@@ -11,7 +11,6 @@ from http.cookies import SimpleCookie
 import json
 from pathlib import Path
 
-import httpx
 import pytest
 
 
@@ -79,8 +78,6 @@ def _compose_cmd(env: dict[str, str], *args: str) -> subprocess.CompletedProcess
             "  api:\n"
             "    ports: !reset []\n"
             "  n8n:\n"
-            "    ports: !reset []\n"
-            "  web:\n"
             "    ports: !reset []\n"
         )
         override.close()
@@ -356,7 +353,7 @@ def _create_persisted_workflow(env: dict[str, str], cookie_header: str) -> dict[
     return payload
 
 
-def test_n8n_bootstrap_runtime_reseeds_owner_and_preserves_user_workflow() -> None:
+def test_n8n_bootstrap_runtime_preserves_owner_and_user_workflow() -> None:
     docker_ok, docker_reason = _docker_available()
     if not docker_ok:
         pytest.skip(f"Docker Compose is not available: {docker_reason}")
@@ -373,6 +370,7 @@ def test_n8n_bootstrap_runtime_reseeds_owner_and_preserves_user_workflow() -> No
         assert settings["data"]["userManagement"]["showSetupOnFirstLoad"] is False
 
         auth_cookie = _login(env, OWNER_PASSWORD)
+
         created_workflow = _create_persisted_workflow(env, auth_cookie)
         workflow_id = str(created_workflow["id"])
         workflow_before_restart = _workflow_details(env, auth_cookie, workflow_id)
