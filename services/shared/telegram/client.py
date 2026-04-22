@@ -7,6 +7,7 @@ import os
 import json
 import mimetypes
 import random
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,7 @@ from services.shared.telegram.errors import TelegramAuthError, TelegramDeliveryE
 from services.shared.telegram.markdown_v2 import HTML_PARSE_MODE
 
 DELIVERY_MODES = {"auto", "send", "forward", "copy"}
+_RUNTIME_SESSION_LOCK = threading.RLock()
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -199,6 +201,32 @@ class TelegramClientWrapper:
             )
         return TelegramClient(str(self._session_base_path(purpose=purpose)), int(api_id), api_hash)
 
+    async def _async_open_runtime_client(self, *, api_id: str, api_hash: str):
+        if TelegramClient is None or StringSession is None:
+            raise TelegramOperationalError(
+                code="TELETHON_NOT_INSTALLED",
+                message="Telethon is required for Telegram operations but is not installed.",
+            )
+
+        with _RUNTIME_SESSION_LOCK:
+            source_client = self._build_client(api_id, api_hash)
+            await source_client.connect()
+            try:
+                authorized = await source_client.is_user_authorized()
+                if not authorized:
+                    raise TelegramAuthError(code="AUTH_REQUIRED", message="Telegram session is not authorized")
+                session_string = StringSession.save(source_client.session)
+            finally:
+                await source_client.disconnect()
+
+        client = TelegramClient(StringSession(session_string), int(api_id), api_hash)
+        await client.connect()
+        authorized = await client.is_user_authorized()
+        if not authorized:
+            await client.disconnect()
+            raise TelegramAuthError(code="AUTH_REQUIRED", message="Telegram session is not authorized")
+        return client
+
     def _copy_session_file(self, *, source_base: Path, target_base: Path) -> None:
         for suffix in (".session", ".session-journal"):
             source = Path(f"{source_base}{suffix}")
@@ -218,8 +246,8 @@ class TelegramClientWrapper:
 
     async def _async_send_code(self, *, api_id: str, api_hash: str, phone_number: str) -> str:
         client = self._build_client(api_id, api_hash)
-        await client.connect()
         try:
+            await client.connect()
             sent_code = await client.send_code_request(phone_number)
             phone_code_hash = getattr(sent_code, "phone_code_hash", None)
             if not isinstance(phone_code_hash, str) or not phone_code_hash:
@@ -434,8 +462,7 @@ class TelegramClientWrapper:
         run_id: str,
         include_media: bool = True,
     ) -> list[dict[str, Any]]:
-        client = self._build_client(api_id, api_hash)
-        await client.connect()
+        client = await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
         out: list[dict[str, Any]] = []
 
         try:
@@ -487,8 +514,7 @@ class TelegramClientWrapper:
         ignore_self: bool,
         ignore_service_messages: bool,
     ) -> dict[str, Any] | None:
-        client = self._build_client(api_id, api_hash)
-        await client.connect()
+        client = await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
         try:
             entity_ref: str | int
             if source_ref.lstrip("-").isdigit():
@@ -549,23 +575,7 @@ class TelegramClientWrapper:
                 message="Telethon is required for Telegram realtime triggers but is not installed.",
             )
 
-        source_client = self._build_client(api_id, api_hash)
-        await source_client.connect()
-        try:
-            authorized = await source_client.is_user_authorized()
-            if not authorized:
-                raise TelegramAuthError(code="AUTH_REQUIRED", message="Telegram session is not authorized")
-            session_string = StringSession.save(source_client.session)
-        finally:
-            await source_client.disconnect()
-
-        client = TelegramClient(StringSession(session_string), int(api_id), api_hash)
-        await client.connect()
-        authorized = await client.is_user_authorized()
-        if not authorized:
-            await client.disconnect()
-            raise TelegramAuthError(code="AUTH_REQUIRED", message="Telegram session is not authorized")
-        return client
+        return await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
 
     def _can_send_to_dialog(self, dialog: Any) -> bool:
         entity = getattr(dialog, "entity", None)
@@ -589,8 +599,7 @@ class TelegramClientWrapper:
         media_mime_type: str | None = None,
         media_kind: str | None = None,
     ) -> dict[str, str]:
-        client = self._build_client(api_id, api_hash)
-        await client.connect()
+        client = await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
         try:
             authorized = await client.is_user_authorized()
             if not authorized:
@@ -671,8 +680,7 @@ class TelegramClientWrapper:
                 retryable=False,
             )
 
-        client = self._build_client(api_id, api_hash)
-        await client.connect()
+        client = await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
         try:
             authorized = await client.is_user_authorized()
             if not authorized:
@@ -1054,9 +1062,9 @@ class TelegramClientWrapper:
         return {"account_state": "disconnected", "reset": True}
 
     async def _async_list_dialogs(self, *, api_id: str, api_hash: str) -> list[dict[str, Any]]:
-        client = self._build_client(api_id, api_hash)
+        client = await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
         dialogs: list[dict[str, Any]] = []
-        async with client:
+        try:
             async for dialog in client.iter_dialogs():
                 entity = dialog.entity
                 raw_date = getattr(dialog, "date", None)
@@ -1068,6 +1076,8 @@ class TelegramClientWrapper:
                     "last_message_date": raw_date.isoformat() if raw_date else None,
                     "can_send": self._can_send_to_dialog(dialog),
                 })
+        finally:
+            await client.disconnect()
         return dialogs
 
     def list_dialogs(self) -> list[dict[str, Any]]:

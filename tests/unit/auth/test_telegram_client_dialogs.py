@@ -45,11 +45,10 @@ def test_list_dialogs_returns_dialog_list(tmp_path):
         yield mock_dialog
 
     mock_client = MagicMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.iter_dialogs = mock_iter_dialogs
+    mock_client.disconnect = AsyncMock(return_value=None)
 
-    with patch.object(wrapper, "_build_client", return_value=mock_client):
+    with patch.object(wrapper, "_async_open_runtime_client", AsyncMock(return_value=mock_client)):
         result = wrapper.list_dialogs()
 
     assert len(result) == 1
@@ -83,11 +82,10 @@ def test_list_dialogs_labels_saved_messages(tmp_path):
         yield mock_dialog
 
     mock_client = MagicMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.iter_dialogs = mock_iter_dialogs
+    mock_client.disconnect = AsyncMock(return_value=None)
 
-    with patch.object(wrapper, "_build_client", return_value=mock_client):
+    with patch.object(wrapper, "_async_open_runtime_client", AsyncMock(return_value=mock_client)):
         result = wrapper.list_dialogs()
 
     assert result[0]["name"] == "Saved Messages"

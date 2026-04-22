@@ -78,3 +78,62 @@ def test_async_open_event_client_uses_string_session(monkeypatch, tmp_path: Path
     assert client is event_client
     assert calls[0][0] == str(wrapper.session_file_base)
     assert str(calls[1][0]) == "string-session:encoded-session"
+
+
+def test_async_open_runtime_client_uses_string_session(monkeypatch, tmp_path: Path) -> None:
+    wrapper = TelegramClientWrapper(tmp_path)
+
+    source_client = MagicMock()
+    source_client.session = MagicMock()
+
+    async def source_connect():
+        return None
+
+    async def source_authorized():
+        return True
+
+    async def source_disconnect():
+        return None
+
+    source_client.connect.side_effect = source_connect
+    source_client.is_user_authorized.side_effect = source_authorized
+    source_client.disconnect.side_effect = source_disconnect
+
+    runtime_client = MagicMock()
+
+    async def runtime_connect():
+        return None
+
+    async def runtime_authorized():
+        return True
+
+    runtime_client.connect.side_effect = runtime_connect
+    runtime_client.is_user_authorized.side_effect = runtime_authorized
+
+    calls = []
+
+    def fake_telegram_client(session, api_id, api_hash):
+        calls.append((session, api_id, api_hash))
+        if len(calls) == 1:
+            return source_client
+        return runtime_client
+
+    class _FakeStringSession:
+        def __init__(self, value=None):
+            self.value = value or ""
+
+        @staticmethod
+        def save(session):
+            return "encoded-runtime-session"
+
+        def __str__(self):
+            return f"string-session:{self.value}"
+
+    monkeypatch.setattr("services.shared.telegram.client.TelegramClient", fake_telegram_client)
+    monkeypatch.setattr("services.shared.telegram.client.StringSession", _FakeStringSession)
+
+    client = asyncio.run(wrapper._async_open_runtime_client(api_id="1", api_hash="hash"))
+
+    assert client is runtime_client
+    assert calls[0][0] == str(wrapper.session_file_base)
+    assert str(calls[1][0]) == "string-session:encoded-runtime-session"

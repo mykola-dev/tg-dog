@@ -91,6 +91,8 @@ docker compose exec -it api opencode providers login
 
 - `lookback_hours` is the explicit lookback window in hours.
 - `include_media` controls whether supported image attachments are downloaded for OCR.
+- If `include_media = true`, set a higher `HTTP Request` timeout because media-backed reads can take much longer than text-only reads.
+- A practical baseline is `180000` ms for media-enabled reads.
 - The endpoint returns one canonical message item per Telegram message.
 
 ### OCR with built-in nodes

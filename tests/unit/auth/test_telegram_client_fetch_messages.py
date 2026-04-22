@@ -82,14 +82,14 @@ def test_async_fetch_messages_stops_after_time_window_expires(tmp_path: Path, mo
 
     fake_client = _FakeClient()
 
-    def _fake_build_client(api_id: str, api_hash: str, *, purpose: str | None = None):
-        return fake_client
-
     async def _fake_build_canonical_message(**kwargs):
         message = kwargs["message"]
         return {"message_id": str(message.id)}
 
-    monkeypatch.setattr(wrapper, "_build_client", _fake_build_client)
+    async def _fake_open_runtime_client(*, api_id: str, api_hash: str):
+        return fake_client
+
+    monkeypatch.setattr(wrapper, "_async_open_runtime_client", _fake_open_runtime_client)
     monkeypatch.setattr(wrapper, "_async_build_canonical_message", _fake_build_canonical_message)
 
     results = asyncio.run(
