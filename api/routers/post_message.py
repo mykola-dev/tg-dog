@@ -12,6 +12,7 @@ from services.shared.telegram.markdown_v2 import (
     HTML_PARSE_MODE,
     PLAIN_TEXT_PARSE_MODE,
     normalize_parse_mode,
+    split_html_chunks,
     split_plain_text_chunks,
 )
 from services.shared.telegram.bot_client import TelegramBotClient
@@ -48,12 +49,19 @@ def post_message(payload: PostMessageRequest):
     if parse_mode not in {PLAIN_TEXT_PARSE_MODE, HTML_PARSE_MODE}:
         return JSONResponse(status_code=400, content={"error": "Unsupported parse mode", "code": "POST_PARSE_MODE_UNSUPPORTED"})
 
-    chunks = [chunk.strip() for chunk in payload.delivery_chunks if isinstance(chunk, str) and chunk.strip()]
-    if not chunks and payload.text.strip():
-        if parse_mode == PLAIN_TEXT_PARSE_MODE:
+    raw_chunks = [chunk for chunk in payload.delivery_chunks if isinstance(chunk, str) and chunk.strip()]
+    chunks: list[str] = []
+    if parse_mode == HTML_PARSE_MODE:
+        html_source = "\n\n".join(chunk.strip() for chunk in raw_chunks) if raw_chunks else payload.text.strip()
+        if html_source:
+            chunks = split_html_chunks(html_source)
+    else:
+        chunks = [chunk.strip() for chunk in raw_chunks]
+        if not chunks and payload.text.strip():
             chunks = split_plain_text_chunks(payload.text)
-        else:
-            chunks = [payload.text.strip()]
+
+    if parse_mode == HTML_PARSE_MODE and not chunks and payload.text.strip() and not raw_chunks:
+        chunks = split_html_chunks(payload.text)
     if not chunks and not payload.media_file_ref:
         return JSONResponse(status_code=400, content={"error": "Message text is empty", "code": "POST_EMPTY_MESSAGE"})
 
