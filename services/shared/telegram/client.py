@@ -575,7 +575,16 @@ class TelegramClientWrapper:
                 message="Telethon is required for Telegram realtime triggers but is not installed.",
             )
 
-        return await self._async_open_runtime_client(api_id=api_id, api_hash=api_hash)
+        with _RUNTIME_SESSION_LOCK:
+            event_session_base = self.prepare_event_session(purpose="events")
+
+        client = TelegramClient(str(event_session_base), int(api_id), api_hash)
+        await client.connect()
+        authorized = await client.is_user_authorized()
+        if not authorized:
+            await client.disconnect()
+            raise TelegramAuthError(code="AUTH_REQUIRED", message="Telegram session is not authorized")
+        return client
 
     def _can_send_to_dialog(self, dialog: Any) -> bool:
         entity = getattr(dialog, "entity", None)
