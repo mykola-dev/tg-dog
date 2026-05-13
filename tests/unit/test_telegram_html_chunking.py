@@ -1,4 +1,4 @@
-from services.shared.telegram.markdown_v2 import split_html_chunks
+from services.shared.telegram.markdown_v2 import repair_html_text, split_html_chunks
 
 
 def test_split_html_chunks_reopens_inline_tags_across_chunks() -> None:
@@ -20,3 +20,15 @@ def test_split_html_chunks_keeps_anchor_valid() -> None:
         '<a href="https://example.com">alpha beta</a>',
         '<a href="https://example.com">gamma</a>',
     ]
+
+
+def test_repair_html_text_closes_unbalanced_tags() -> None:
+    repaired = repair_html_text("<i>Hello <b>world</b>")
+
+    assert repaired == "<i>Hello <b>world</b></i>"
+
+
+def test_split_html_chunks_repairs_unbalanced_tags_before_splitting() -> None:
+    chunks = split_html_chunks("<i>Hello brave new world", chunk_size=18)
+
+    assert chunks == ["<i>Hello brave</i>", "<i>new world</i>"]

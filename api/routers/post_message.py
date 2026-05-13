@@ -12,6 +12,7 @@ from services.shared.telegram.markdown_v2 import (
     HTML_PARSE_MODE,
     PLAIN_TEXT_PARSE_MODE,
     normalize_parse_mode,
+    repair_html_text,
     split_html_chunks,
     split_plain_text_chunks,
 )
@@ -54,14 +55,14 @@ def post_message(payload: PostMessageRequest):
     if parse_mode == HTML_PARSE_MODE:
         html_source = "\n\n".join(chunk.strip() for chunk in raw_chunks) if raw_chunks else payload.text.strip()
         if html_source:
-            chunks = split_html_chunks(html_source)
+            chunks = split_html_chunks(repair_html_text(html_source))
     else:
         chunks = [chunk.strip() for chunk in raw_chunks]
         if not chunks and payload.text.strip():
             chunks = split_plain_text_chunks(payload.text)
 
     if parse_mode == HTML_PARSE_MODE and not chunks and payload.text.strip() and not raw_chunks:
-        chunks = split_html_chunks(payload.text)
+        chunks = split_html_chunks(repair_html_text(payload.text))
     if not chunks and not payload.media_file_ref:
         return JSONResponse(status_code=400, content={"error": "Message text is empty", "code": "POST_EMPTY_MESSAGE"})
 

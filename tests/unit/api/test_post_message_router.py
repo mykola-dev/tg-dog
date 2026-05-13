@@ -43,6 +43,9 @@ def test_post_message_router_accepts_html_for_user_mode(stateless_api_client):
 
 def test_post_message_router_resplits_html_text_safely(stateless_api_client):
     with patch("api.routers.post_message.TelegramClientWrapper") as MockWrapper, patch(
+        "api.routers.post_message.repair_html_text",
+        side_effect=lambda value: value,
+    ) as mocked_repair, patch(
         "api.routers.post_message.split_html_chunks",
         return_value=["<i>Hello</i>", "<i>world</i>"],
     ) as mocked_split:
@@ -59,12 +62,16 @@ def test_post_message_router_resplits_html_text_safely(stateless_api_client):
         )
 
     assert resp.status_code == 200
+    mocked_repair.assert_called_once_with("<i>Hello world</i>")
     mocked_split.assert_called_once_with("<i>Hello world</i>")
     assert [call.kwargs["chunk_text"] for call in instance.send_text_chunk.call_args_list] == ["<i>Hello</i>", "<i>world</i>"]
 
 
 def test_post_message_router_resplits_existing_html_delivery_chunks_safely(stateless_api_client):
     with patch("api.routers.post_message.TelegramClientWrapper") as MockWrapper, patch(
+        "api.routers.post_message.repair_html_text",
+        return_value="<i>Hello\n\nworld</i>",
+    ) as mocked_repair, patch(
         "api.routers.post_message.split_html_chunks",
         return_value=["<i>Hello</i>", "<i>world</i>"],
     ) as mocked_split:
@@ -87,8 +94,29 @@ def test_post_message_router_resplits_existing_html_delivery_chunks_safely(state
         )
 
     assert resp.status_code == 200
+    mocked_repair.assert_called_once_with("<i>Hello\n\nworld</i>")
     mocked_split.assert_called_once_with("<i>Hello\n\nworld</i>")
     assert [call.kwargs["chunk_text"] for call in instance.send_text_chunk.call_args_list] == ["<i>Hello</i>", "<i>world</i>"]
+
+
+def test_post_message_router_repairs_broken_html_before_sending(stateless_api_client):
+    with patch("api.routers.post_message.TelegramClientWrapper") as MockWrapper:
+        instance = MagicMock()
+        instance.send_text_chunk.side_effect = [
+            {"chat_id": "123", "message_id": "1"},
+            {"chat_id": "123", "message_id": "2"},
+        ]
+        MockWrapper.return_value = instance
+
+        resp = stateless_api_client.post(
+            "/post/message",
+            json={"sender_mode": "user", "target_id": "self", "text": "<i>Hello brave new world", "parse_mode": "html"},
+        )
+
+    assert resp.status_code == 200
+    assert [call.kwargs["chunk_text"] for call in instance.send_text_chunk.call_args_list] == [
+        "<i>Hello brave new world</i>",
+    ]
 
 
 def test_post_message_router_rejects_unknown_parse_mode(stateless_api_client):

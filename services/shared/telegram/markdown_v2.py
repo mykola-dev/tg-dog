@@ -92,8 +92,26 @@ def split_plain_text_chunks(text: str, *, chunk_size: int = DEFAULT_CHUNK_SIZE) 
     return _split_text(text=text, chunk_size=chunk_size)
 
 
-def split_html_chunks(text: str, *, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+def repair_html_text(text: str) -> str:
     normalized = _normalize_text(text)
+    if not normalized:
+        return ""
+
+    tokenizer = _TelegramHTMLTokenizer()
+    tokenizer.feed(normalized)
+    tokenizer.close()
+
+    repaired_parts: list[str] = []
+    open_tags: list[_OpenHtmlTag] = []
+    for token in tokenizer.tokens:
+        repaired_parts.append(token.raw)
+        open_tags = _next_open_tag_stack(open_tags, token)
+    repaired_parts.append(_render_closing_suffix(open_tags))
+    return "".join(repaired_parts)
+
+
+def split_html_chunks(text: str, *, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+    normalized = repair_html_text(text)
     if not normalized:
         return []
 
